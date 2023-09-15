@@ -1,0 +1,13 @@
+--@name Cube On Eye
+--@author Nep Nep | STEAM_0:1:538523942 | discord: stirven | https://github.com/Stirven13
+--@server
+
+if player() ~= owner() then return end
+
+cube = hologram.create(Vector(), Angle(), "models/starfall/holograms/box.mdl", Vector(3, 3, 3))
+
+hook.add("tick", "AddHologram", function()
+    playerAimVector = owner():getAimVector()
+    playerEyePos = owner():getEyePos()
+    cube:setPos(playerAimVector * 10 + playerEyePos)
+end)

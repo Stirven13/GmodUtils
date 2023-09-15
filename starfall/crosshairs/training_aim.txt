@@ -1,0 +1,86 @@
+--@name Training Aim
+--@author Nep Nep | STEAM_0:1:538523942 | discord: stirven | https://github.com/Stirven13
+--@shared
+
+
+local function printTable(tbl)
+    for x = 1, #tbl do
+        local str = ""
+        for y = 1, #tbl[x] do
+            str = str .. tbl[x][y] .. " "
+        end
+        print(str, "\n")
+    end
+end
+
+// [CONFIG] Change MODE
+local MODE = 1
+--[[
+* Appearing balls = 1
+    Ball will spawning in under chip, you can change setting in Config.AppearingBalls
+]]
+
+// [CONFIG] Will be trigger on other players
+local OTHER_PLAYERS = true
+
+// [CONFIG] Advanced configuration for all mode
+local config = {
+    appearingBalls = {
+        maxCount = 4,
+        couldownAppearance = 1.5,
+        distanceInAir = 70,
+        distanceFromChip = 50,
+        propSize = 0.5,
+        canSpawnInOtherBalls = false,  // True - spawn in absolute random pos;   False - spawn in random pos and not in other balls
+        sphereSize = 0.75  // AllSphereSize: 0.25, 0.75, 1, 1.75, 2
+    }
+}
+
+if CLIENT then
+    
+elseif SERVER then
+    if MODE == 1 then
+        local allSphere = {
+            [0.25] = "models/hunter/misc/sphere025x025.mdl",
+            [0.75] = "models/hunter/misc/sphere075x075.mdl",
+            [1] = "models/hunter/misc/sphere1x1.mdl",
+            [1.75] = "models/hunter/misc/sphere175x175.mdl",
+            [2] = "models/hunter/misc/sphere2x2.mdl"
+        }
+        if not table.hasValue(table.getKeys(allSphere), config.appearingBalls.sphereSize) then
+            error(string.format("Sphere size can be only 0.25, 0.75, 1, 1.75, 2. Current size if %f", config.appearingBalls.sphereSize))
+        end
+        
+        local function createBall()
+            local spawnPoint = chip():getPos() + Vector(0, 0, config.appearingBalls.distanceInAir) + Vector(0, 0, config.appearingBalls.distanceFromChip)
+            local spawnPos = Vector(
+                math.random(-config.appearingBalls.distanceInAir, config.appearingBalls.distanceInAir),
+                math.random(-config.appearingBalls.distanceInAir, config.appearingBalls.distanceInAir), 
+                math.random(-config.appearingBalls.distanceInAir, config.appearingBalls.distanceInAir)
+            )
+            return prop.create(spawnPos + spawnPoint, Angle(), allSphere[config.appearingBalls.sphereSize], true)
+        end
+        
+        local propBalls = {}
+        hook.add("tick", "StartSpawn", function()
+            if table.count(propBalls) == config.appearingBalls.maxCount then
+                hook.remove("tick", "StartSpawn")
+                return
+            end
+            propBall = createBall()
+            table.insert(propBalls, propBall)
+        end)
+        
+        hook.add("EntityTakeDamage", "CheckHitOnBall" , function(target, attacker, inflictor, amount, type, position, force)
+            if not OTHER_PLAYERS and attacker ~= owner() then return end
+            if not table.hasValue(propBalls, target) then return end
+            
+            table.removeByValue(propBalls, target)
+            target:remove()
+            propBall = createBall()
+            propBall:setHealth(1000000)
+            propBall:setMaxHealth(1000000)
+            table.insert(propBalls, propBall)
+        end)
+    end
+end

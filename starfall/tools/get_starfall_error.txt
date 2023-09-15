@@ -1,0 +1,26 @@
+--@name
+--@author Nep Nep | STEAM_0:1:538523942 | discord: stirven | https://github.com/Stirven13
+--@shared
+
+--[[
+Starfall Scripting Environment
+
+Github: https://github.com/thegrb93/StarfallEx
+Reference Page: http://thegrb93.github.io/Starfall/
+
+Default Keyboard shortcuts: https://github.com/ajaxorg/ace/wiki/Default-Keyboard-Shortcuts
+]]
+
+--[[
+StarfallError(Entity ent, Player ply, string err)
+[src]
+Called when starfall chip errors
+
+Parameters
+Entity ent
+Starfall chip that errored
+Player ply
+Owner of the chip on server or player that script errored for on client
+string err
+Error message
+]]

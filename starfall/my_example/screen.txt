@@ -1,0 +1,41 @@
+--@name Screen Example
+--@author Nep Nep | STEAM_0:1:538523942 | discord: stirven | https://github.com/Stirven13
+--@shared
+
+if CLIENT then
+    // Creates a new render target to draw onto.
+    // The dimensions will always be 1024x1024
+    render.createRenderTarget("screen")
+
+    hook.add("renderoffscreen","refresh",function()
+        // Create a custom texture
+        
+        render.selectRenderTarget("screen")
+        render.clear(Color(0,0,0,0))
+            
+        render.setColor(Color(0,0,255))
+        render.drawRect(0,0,1024,1024)
+            
+        render.setColor(Color(255,0,0))
+        render.drawRect(0,0,512,512)
+        hook.remove("renderoffscreen","refresh")
+    end)
+    
+    hook.add("render","",function()
+        render.setColor(Color(0,255,0))
+        render.drawRect(0,0,512,512)
+    
+        render.setColor(Color(255,255,255)) // You can change Color, to change color of texture
+        // Draw a custom texture
+        render.setRenderTargetTexture("screen")
+        render.drawTexturedRect(0,0,256,256)
+    end)
+elseif SERVER then
+    screenProp = prop.createComponent(
+        chip():getPos(),  // Temp coordinates
+        Angle(90, 180, 0) + owner():getAimVector():getAngle() * Angle(0, 1, 0),  // Angle for correct spawn
+        "starfall_screen", "models/hunter/plates/plate2x2.mdl", true)
+    screenProp:setPos(Vector(0, 0, -screenProp:getModelBounds()[1] + 10) + chip():getPos())
+    screenProp:linkComponent(chip())
+end
+
