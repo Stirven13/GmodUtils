@@ -1,0 +1,54 @@
+--@name
+--@author Nep Nep | STEAM_0:1:538523942 | discord: stirven | https://github.com/Stirven13
+--@shared
+
+
+// You need to type absolute path of files
+// You also need to create these files manually
+
+local CURRENT_TRACK_PATH = [[C:\Code\Python\GmodMusicPlayerDiscordWebhook\data\current_track.json]]
+// This file will contain all the information about the track that will be found.
+
+local FIND_TRACK_PATH = [["C:\Code\Python\GmodMusicPlayerDiscordWebhook\data\find_track.txt"]]
+// This file will contain the name of the track to be searched for.
+// There may also be a link to the track.
+
+local TRACKS_PATH = [[C:\Code\Python\GmodMusicPlayerDiscordWebhook\data\tracks.json]]
+// This file will contain all the tracks that have ever been found.
+// This is necessary so that several tracks are not downloaded many times.
+
+// [[ ]] - This symbols use how ""
+// Just add path in [[]], example: [[C:\Path\tracks.json]]
+
+
+local VOLUME = 0.5 // Default Volume is 0.5 (use float value)
+// This parameter does not affect the distance
+
+
+// MAX_VOLUME   MAX_VOLUME    MIDDLE_VOLUME    LOW_VOLUME
+// 0          - DISTANCE_MAX_VOLUME - DISTANCE_MIN_VOLUME
+local DISTANCE_MAX_VOLUME = 0 // At this distance, the music volume will be maximum
+local DISTANCE_MIN_VOLUME = 200 // At this distance, the volume of the music will gradually decrease
+
+
+enums = {
+    repeatMode = {
+        none = 0,
+        playlist = 1,
+        single = 2
+    }
+}
+
+queue = {}
+current_play = 0
+is_shuffle = false
+repeat_mode = enums.repeatMode.none
+
+if CLIENT then
+    
+    
+elseif SERVER then
+    
+    
+    
+end

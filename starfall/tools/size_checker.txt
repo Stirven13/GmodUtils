@@ -73,10 +73,10 @@ if CLIENT then
     if player() ~= owner() then return end
     
     enableHud(nil, true) 
-       
+    
     local isHaveHands = false
     for k, v in pairs(owner():getWeapons()) do
-        if v:getClass() == "none" then
+        if v:getClass() == "rp_keys" then
             input.selectWeapon(v)
             break
         end
@@ -127,7 +127,7 @@ if CLIENT then
         countRepeat = net.readInt(16)
         table.empty(holograms)
         for index = 1, countRepeat do
-            table.insert(holograms, HologramInfo:fromTable(net.readTable()))
+            pcall(table.insert(holograms, HologramInfo:fromTable(net.readTable())))
         end
     end)
     
@@ -168,7 +168,7 @@ if CLIENT then
     
     hook.add("KeyRelease", "DetectKeys", function(ply, button)
         if ply ~= owner() then return end
-        if not table.hasValue({"Hands", "Camera"}, ply:getActiveWeapon():getPrintName()) then return end
+        if not table.hasValue({"rp_keys", "Hands", "Camera"}, ply:getActiveWeapon():getClass()) then return end
         
         if switchKeyPressDetectKeys[button] ~= nil then
             switchKeyPressDetectKeys[button](ply)
@@ -253,7 +253,9 @@ elseif SERVER then
         net.start("netSendHologram")
         net.writeInt(table.count(holograms), 16)
         for index = 1, table.count(holograms) do
-            net.writeTable(holograms[index]:toTableOnlyPos())
+            if holograms[index].line != nil then 
+                net.writeTable(holograms[index]:toTableOnlyPos())
+            end
         end
         net.send()
     end

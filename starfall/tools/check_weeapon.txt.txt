@@ -13,5 +13,5 @@ Default Keyboard shortcuts: https://github.com/ajaxorg/ace/wiki/Default-Keyboard
 
 hook.add("tick", "", function() 
     weapon = owner():getActiveWeapon()
-    print(weapon:getPrintName())
+    print(weapon:getPrintName(), " ", weapon:getClass())
 end)

@@ -1,6 +1,8 @@
 --@name Text2Url
 --@author Nep Nep | STEAM_0:1:538523942 | discord: stirven | https://github.com/Stirven13
---@server
+--@client
+
+if player() ~= owner() then return end
 
 local query = "Alan Walker"
 local url = "https://music.youtube.com/search?q=" .. query
