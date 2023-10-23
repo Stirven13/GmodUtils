@@ -330,34 +330,3 @@ elseif SERVER then
         net.send()
     end)
 end
-
-
-
---[[
-renderscene(Vector origin, Angle angles, number fov)
-[src]
-Called when a scene is requested to be drawn. This is used for the render.renderview function.
-
-Parameters
-Vector origin
-View origin
-Angle angles
-View angles
-number fov
-View FOV]]
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
