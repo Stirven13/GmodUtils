@@ -4,7 +4,7 @@
 
 model = "models/pigeon.mdl"
 timerReset = 2
-maxIndex = 14
+maxIndex = 11
 distance = 50
 
 holograms = {}

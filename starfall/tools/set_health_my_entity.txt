@@ -1,0 +1,28 @@
+--@name SHME
+--@author Nep Nep | STEAM_0:1:538523942 | discord: stirven | https://github.com/Stirven13
+--@server
+
+local allEntity = find.all()
+local currentIndex = 0
+local countEntity = table.count(allEntity)
+
+hook.add("tick", "SetHealthToEntity", function()
+    while (true) do
+        if currentIndex > countEntity then
+            hook.remove("tick", "SetHealthToEntity")
+            chip():remove()
+        end
+        
+        if cpuTotalAverage() > cpuMax() * 0.5 then return end
+        currentIndex = currentIndex + 1
+        ent = entity(currentIndex)
+        
+        if not isValid(ent) then continue end
+        if not isValid(ent:getOwner()) then continue end
+        if ent:getOwner() != owner() then continue end
+        
+        ent:setMaxHealth(1000000000)
+        ent:setHealth(1000000000)
+        // ent:setHealth(1)
+    end
+end)

@@ -1,0 +1,13 @@
+--@name CheckHit
+--@author Nep Nep | STEAM_0:1:538523942 | discord: stirven | https://github.com/Stirven13
+--@server
+
+local hologramHit = hologram.create(Vector(), Angle(), "models/starfall/holograms/box.mdl", Vector(5, 5, 5))
+hologramHit:setColor(Color(255, 0, 0))
+
+hook.add("PlayerHurt", "CheckHit", function(ply, attacker, newHealth, damageTaken)
+    if not (ply == owner() or attacker == owner()) then return end
+    
+    local pointHit = attacker:getEyeTrace().HitPos
+    hologramHit:setPos(pointHit)
+end)
