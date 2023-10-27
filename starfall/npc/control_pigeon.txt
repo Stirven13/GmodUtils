@@ -1,5 +1,5 @@
 --@name Control Pigeon
---@author Nep Nep | STEAM_0:1:538523942 | discord: stirven | https://github.com/Stirven13
+--@author NepNep | discord: stirven
 --@shared
 
 
@@ -175,7 +175,7 @@ elseif SERVER then
     
     local sphere = prop.create(chip():getPos() + Vector(0, 0, 10), Angle(), "models/hunter/misc/sphere025x025.mdl")
     sphere:setColor(Color(0, 0, 0, 0))
-    sphere:setMass(10000)
+    sphere:setMass(1)
     
     local pigeon = hologram.create(chip():getPos() + Vector(0, 0, 10), Angle(), "models/pigeon.mdl")
     
@@ -261,7 +261,7 @@ elseif SERVER then
         pigeon:setPos(sphere:getPos() + Vector(0, 0, -5))
         calculateControl(localPlayer)
         
-        sphere:setAngles(localPlayer:getAimVector():getAngle() + Angle(0, 180, 0))
+        sphere:setAngles(localPlayer:getAimVector():getAngle() + Angle(0, 0, 0))
         sphere:setAngleVelocity(Vector(0))
         
         pigeonNewAngles = localPlayer:getAimVector():getAngle()
@@ -279,7 +279,7 @@ elseif SERVER then
     function calculateControl()
         if currentControlMode == enumControlMods.DEFAULT then
             if not isDrive then return end
-            local degreeY = sphere:getAngles().y
+            local degreeY = sphere:getAngles().y + 180
             
             local currentPigeonSpeed = pigeonSpeed.Walk
             

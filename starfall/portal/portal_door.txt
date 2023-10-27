@@ -1,20 +1,9 @@
 --@name Portal Door
---@author Nep Nep | STEAM_0:1:538523942 | discord: stirven | https://github.com/Stirven13
+--@author NepNep | discord: stirven
 --@shared
 
-if SERVER then  // SERVER
-    net.receive("")
-else  // CLIENT
-    hook.add("Move", function(ply, mv)
-        
-    end)
-end
-
-
-if CLIENT then  // CLIENT
-    hook.add()
-else  // SERVER
-    hook.add("move", function(ply, mv)
-        
-    end)
+if CLIENT then
+    
+elseif SERVER then
+    
 end

@@ -1,17 +1,7 @@
 --@name Training Aim
---@author Nep Nep | STEAM_0:1:538523942 | discord: stirven | https://github.com/Stirven13
+--@author NepNep | discord: stirven
 --@shared
 
-
-local function printTable(tbl)
-    for x = 1, #tbl do
-        local str = ""
-        for y = 1, #tbl[x] do
-            str = str .. tbl[x][y] .. " "
-        end
-        print(str, "\n")
-    end
-end
 
 // [CONFIG] Change MODE
 local MODE = 1
@@ -51,14 +41,22 @@ elseif SERVER then
             error(string.format("Sphere size can be only 0.25, 0.75, 1, 1.75, 2. Current size if %f", config.appearingBalls.sphereSize))
         end
         
-        local function createBall()
+        local function setNewPos(sphere)
             local spawnPoint = chip():getPos() + Vector(0, 0, config.appearingBalls.distanceInAir) + Vector(0, 0, config.appearingBalls.distanceFromChip)
             local spawnPos = Vector(
                 math.random(-config.appearingBalls.distanceInAir, config.appearingBalls.distanceInAir),
                 math.random(-config.appearingBalls.distanceInAir, config.appearingBalls.distanceInAir), 
                 math.random(-config.appearingBalls.distanceInAir, config.appearingBalls.distanceInAir)
             )
-            return prop.create(spawnPos + spawnPoint, Angle(), allSphere[config.appearingBalls.sphereSize], true)
+            sphere:setPos(spawnPos + spawnPoint)
+        end
+        
+        local function spawnSphere()
+            local sphere = prop.create(Vector(), Angle(), allSphere[config.appearingBalls.sphereSize], true)
+            sphere:setHealth(1000000)
+            sphere:setMaxHealth(1000000)
+            setNewPos(sphere)
+            return sphere
         end
         
         local propBalls = {}
@@ -67,7 +65,7 @@ elseif SERVER then
                 hook.remove("tick", "StartSpawn")
                 return
             end
-            propBall = createBall()
+            propBall = spawnSphere()
             table.insert(propBalls, propBall)
         end)
         
@@ -75,11 +73,8 @@ elseif SERVER then
             if not OTHER_PLAYERS and attacker ~= owner() then return end
             if not table.hasValue(propBalls, target) then return end
             
-            table.removeByValue(propBalls, target)
-            target:remove()
-            propBall = createBall()
-            propBall:setHealth(1000000)
-            propBall:setMaxHealth(1000000)
+            setNewPos(target)
+            target:setHealth(1000000)
             table.insert(propBalls, propBall)
         end)
     end

@@ -1,5 +1,5 @@
 --@name
---@author Nep Nep | STEAM_0:1:538523942 | discord: stirven | https://github.com/Stirven13
+--@author NepNep | discord: stirven
 --@server
 
 hook.add("KeyPress", "CheckEntityOnKeyPress", function(ply, key)

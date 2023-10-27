@@ -1,21 +1,21 @@
 --@name IvBn
---@author Nep Nep | STEAM_0:1:538523942 | discord: stirven | https://github.com/Stirven13
+--@author NepNep | discord: stirven
 --@server
 
-chipEntId = chip():entIndex()
+local currentBananaId = 0
+local allBananas = find.byClass("sent_banana_peel")
+local countBananas = table.count(allBananas)
 
-currentCheckId = 0
-
-hook.add("tick", "SetHealthToEntity", function()
+hook.add("tick", "BananaInteraction", function()
     while (true) do
-        if currentCheckId >= chipEntId then
-            hook.remove("tick", "SetHealthToEntity")
+        if currentBananaId > countBananas then
+            hook.remove("tick", "BananaInteraction")
             chip():remove()
         end
         
         if cpuTotalAverage() > cpuMax() * 0.9 then return end
-        currentCheckId = currentCheckId + 1
-        ent = entity(currentCheckId)
+        ent = allBananas[currentBananaId]
+        currentBananaId = currentBananaId + 1
         
         if not isValid(ent) then continue end
         if not isValid(ent:getOwner()) then continue end
@@ -23,8 +23,8 @@ hook.add("tick", "SetHealthToEntity", function()
         
         
         if ent:getModel() == "models/props_farm/scenes/bananana_peel.mdl" then
-            ent:setColor(Color(0, 0, 0, 0))
-            // ent:remove()
+            //ent:setColor(Color(0, 0, 0, 0))
+            ent:remove()
         end
     end
 end)
