@@ -2,8 +2,77 @@
 --@author NepNep | discord: stirven
 --@shared
 
+local positions = {
+    ["gm_excess_construct_13"] = {
+        ["Spawn"] = { pos = Vector(0, 0, 0), angle = Angle() },
+        ["Secret place"] = { pos = Vector(10242, 9262, -9150), angle = Angle() }
+    }
+}
+
 if CLIENT then
     
 elseif SERVER then
+    local doorOffsetPos = Vector(0, -23.640625, 54.28125)
+    local temoDoorOffsetPos = doorOffsetPos
     
+    local pod = prop.createSent(Vector(), Angle(), "Pod", true)
+    pod:setColor(Color(0, 0, 0, 0))
+    pod:setNocollideAll(true)
+    
+    local door1 = hologram.create(Vector(), Angle(), "models/props_c17/door01_left.mdl")
+    door1:setSkin(11)
+    door1:setBodygroup(1, 1)
+    
+    local neededPlace = "Secret place"
+    
+    local function setDoorForPlayer(ply)
+        local traceResult = ply:getEyeTrace()
+        if not traceResult.Hit then return end
+        
+        door1:setAngles(Angle(0, 1, 0) * ply:getEyeAngles())
+        
+        local temoDoorOffsetPos = doorOffsetPos
+        temoDoorOffsetPos:rotate(door1:getAngles())
+        
+        door1:setPos(traceResult.HitPos + temoDoorOffsetPos)
+        pod:setPos(traceResult.HitPos)
+    end
+    
+    /*
+    hook.add("tick", "", function()
+        local angleDoor1 = door1:getAngles()
+        door1:setAngles(angleDoor1 + Angle(0, 1, 0))
+        
+        temoDoorOffsetPos:rotate(Angle(0, 1, 0))
+        
+        door1:setPos(chip():getPos() + temoDoorOffsetPos)
+    end)*/
+    
+    hook.add("PlayerSay", "CheckPlayerSay", function(ply, text, teamChat)
+        if not isValid(ply) then return end
+        
+        if string.lower(text) == "!newpos" and ply == owner() then
+            print(
+                string.format("[NamePos] = { pos = Vector(%d, %d, %d), angle = Angle(%d, %d, %d)}", 1, 1, 1, 1, 1, 1)
+            )
+        elseif string.lower(text) == "!nep_door" or string.lower(text) == "!nepdoor" then
+            setDoorForPlayer(ply)
+        end
+    end)
+    
+    hook.add("PlayerEnteredVehicle", "TeleportWhenEnterInPod", function(ply, vehicle, num)
+        if not isValid(vehicle) then return end
+        if vehicle:entIndex() != pod:entIndex() then return end
+        
+        pod:setPos(positions[game.getMap()][neededPlace].pos)
+        pod:remove()
+        
+        pod = prop.createSent(Vector(), Angle(), "Pod")
+        pod:setColor(Color(0, 0, 0, 0))
+        pod:setNocollideAll(true)
+    end)
 end
+
+
+
+

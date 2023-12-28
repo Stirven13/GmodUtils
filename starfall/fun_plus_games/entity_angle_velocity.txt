@@ -1,10 +1,10 @@
---@name CarouselPizdec
+--@name EntityAnglesVelocity
 --@author NepNep | discord: stirven
 --@server
 
 local speedInDegree = 10000
 
-local carousel = prop.create(chip():getPos(), Angle(), "models/props_c17/playground_carousel01.mdl")
+local carousel = prop.create(chip():getPos() + Vector(0, 0, 100), Angle(), "models/hunter/blocks/cube1x1x1.mdl")
 
 hook.add("tick", "ChangeAnglesOfCarousel", function()
     if carousel:isFrozen() then
@@ -16,6 +16,6 @@ hook.add("tick", "ChangeAnglesOfCarousel", function()
     carouselAngle.r = math.clamp(carouselAngle.r, -5, 5)
     carousel:setAngles(carouselAngle)
     
-    carousel:setPos(chip():getPos())
-    carousel:setAngleVelocity(Vector(0, 0, speedInDegree))
+    carousel:setPos(chip():getPos() + Vector(0, 0, 100))
+    carousel:setAngleVelocity(Vector(speedInDegree, 0, 0))
 end)

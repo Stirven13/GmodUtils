@@ -1,0 +1,17 @@
+--@name Move Train
+--@author NepNep | discord: stirven
+--@shared
+
+if CLIENT then
+    if player() != owner() then return end
+
+    local trailString = file.read("trail.json")
+    
+    timer.simple(2, function()
+        net.start("TrailData Sync")
+        net.writeStream(trailString)
+        net.send()
+    end)
+elseif SERVER then
+    
+end

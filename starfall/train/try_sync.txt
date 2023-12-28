@@ -1,0 +1,28 @@
+--@name Try Sync TrailData
+--@author NepNep | discord: stirven
+--@shared
+
+if CLIENT then
+    if player() != owner() then return end
+
+    local trailString = file.read("trail.json")
+    
+    timer.simple(2, function()
+        net.start("TrailData Sync")
+        net.writeStream(trailString)
+        net.send()
+    end)
+elseif SERVER then
+    local trailData = nil
+    
+    local function convertTrail(trailString)
+        trailData = json.decode(trailString)
+        print("Count points in trail: " .. table.count(trailData))
+    end
+    
+    net.receive("TrailData Sync", function()
+        print("Start sync")
+        local trailString = net.readStream(convertTrail)
+        print("End starting sync")
+    end)
+end

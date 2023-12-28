@@ -1,0 +1,15 @@
+--@name TimeInTitle
+--@author NepNep | discord: stirven
+--@server
+
+function formatTime(seconds)
+    local hours = math.floor(seconds / 3600)
+    local minutes = math.floor((seconds % 3600) / 60)
+    local seconds = seconds % 60
+    return string.format("%02d:%02d:%02d", hours, minutes, seconds)
+end
+
+timer.create("ChangeTitle", 1, 0, function()
+    local stringTime = formatTime(timer.curtime())
+    concmd(string.format("cap title <color=120, 120, 120>#coder <color=220,220,220>Server is alive - [%s]", stringTime))
+end)

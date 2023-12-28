@@ -7,7 +7,7 @@ local MODELS = {
     PIGEON = "models/pigeon.mdl"
 }
 
-local currentModel = MODELS.PIGEON
+local currentModel = MODELS.CROW
 
 if player() != owner() then return end
 
@@ -73,8 +73,8 @@ if CLIENT then
         if not isValid(pigeon) then return end
         if not isDriving then return end
         
-        newView = {
-            origin = pigeon:getPos() + Vector(0, 0, 30),
+        local newView = {
+            origin = pigeon:getPos() + Vector(0, 0, 30) ,
             angles = ang,
             fov = fov,
             drawviewer = true

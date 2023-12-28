@@ -1,0 +1,7 @@
+--@name AntiSpectate
+--@author NepNep | discord: stirven
+--@client
+
+print(owner())
+
+//local holo = hologram.create()

@@ -1,0 +1,39 @@
+--@name Normalization Trail
+--@author NepNep | discord: stirven
+--@client
+
+if player() != owner() then return end
+
+local trailString = file.read("trail.json")
+local trailData = json.decode(trailString)
+
+local neededDistance = 7
+local neededDistanceSqr = math.pow(neededDistance, 2)
+
+local function getCorrectTrail(inputTrail)
+    local correctTrail = { }
+    local lastPoint = inputTrail[1]
+    
+    if inputTrail[1] != inputTrail[#inputTrail] then
+        table.insert(inputTrail, inputTrail[1])
+    end
+    
+    for i, trailPoint in ipairs(inputTrail) do
+        lastPoint.angle = trailPoint.angle
+        if lastPoint.vector:getDistanceSqr(trailPoint.vector) < neededDistanceSqr then continue end
+        
+        while lastPoint.vector:getDistanceSqr(trailPoint.vector) >= neededDistanceSqr do
+            local direction = (trailPoint.vector - lastPoint.vector):getNormalized()
+            lastPoint = { vector=lastPoint.vector + direction * neededDistance, angle=lastPoint.angle }
+            
+            table.insert(correctTrail, lastPoint)
+        end
+    end
+    
+    return correctTrail
+end
+
+local normalizeTrail = getCorrectTrail(trailData)
+
+local normalizeTrailString = json.encode(normalizeTrail)
+file.write("norm_trail.json", normalizeTrailString)

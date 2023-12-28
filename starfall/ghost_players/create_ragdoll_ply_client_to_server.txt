@@ -1,0 +1,77 @@
+--@name CreateRadollPly ClientToServer
+--@author NepNep | discord: stirven
+--@shared
+
+if CLIENT then
+    net.receive("GetClientBones", function()
+        local ply = net.readEntity()
+        local ent = net.readEntity()
+        local neededBones = net.readTable()
+        
+        local clientBones = {}
+        
+        for _, indexBone in ipairs(neededBones) do
+            local pos, ang = ply:getBonePosition(indexBone)
+            clientBones[indexBone] = {pos=pos, ang=ang}
+        end
+        
+        net.start("SetClientBones")
+        net.writeEntity(ent)
+        net.writeTable(clientBones)
+        net.send()
+    end)
+    
+    
+elseif SERVER then
+    local function createRagdollofPly(ply)
+        local ent = prop.createRagdoll(ply:getModel(), true)
+        ent:setPos(ply:getPos())
+        ent:setNocollideAll(true)
+        ent:setCollisionGroup(COLLISION_GROUP.IN_VEHICLE)
+        
+        local neededBones = {}
+        local physicsObjectCount = ent:getPhysicsObjectCount() - 1
+        
+        for indexPhysObj = 0, physicsObjectCount do
+            local obj = ent:getPhysicsObjectNum(indexPhysObj)
+            local bone = ent:translatePhysBoneToBone(indexPhysObj)
+            local pos, ang = ply:getBonePosition(bone)
+            
+            
+            table.insert(neededBones, bone)
+            
+            obj:setPos(pos)
+            obj:setAngles(ang)
+            obj:enableMotion(false)
+        end
+        
+        net.start("GetClientBones")
+        net.writeEntity(ply)
+        net.writeEntity(ent)
+        net.writeTable(neededBones)
+        net.send(ply)
+        
+        return ent
+    end
+    
+    net.receive("SetClientBones", function()
+        local ent = net.readEntity()
+        local clientBones = net.readTable()
+        
+        local physicsObjectCount = ent:getPhysicsObjectCount() - 1
+        
+        for indexPhysObj = 0, physicsObjectCount do
+            local obj = ent:getPhysicsObjectNum(indexPhysObj)
+            local bone = ent:translatePhysBoneToBone(indexPhysObj)
+            local pos, ang = clientBones[bone].pos, clientBones[bone].ang
+            
+            obj:setPos(pos)
+            obj:setAngles(ang)
+            obj:enableMotion(false)
+        end
+    end)
+    
+    timer.simple(1, function()
+        createRagdollofPly(owner())
+    end)
+end

@@ -1,0 +1,10 @@
+--@name Unchangeble Props
+--@author NepNep | discord: stirven
+--@server
+
+hook.add("EntityTakeDamage", "ZeroDamage", function(target, attacker, inflictor, amount, type, position, force)
+    if not isValid(target) then return end
+    if target:getOwner() != owner() then return end
+    
+    target:setHealth(target:getMaxHealth())
+end)

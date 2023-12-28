@@ -1,0 +1,29 @@
+--@name I'm Hologram
+--@author NepNep | discord: stirven
+--@shared
+
+
+if CLIENT then
+    if player() != owner() then return end
+    
+    net.receive("StartSettingAnimation", function()
+        local iHolo = net.readEntity()
+    end)
+    
+    
+elseif SERVER then
+    local iHolo = hologram.create(chip():getPos(), owner():getAngles() + Angle(0, 180, 0), owner():getModel())
+    iHolo:setAnimation(23, 1, 0.1)
+    
+    hook.add("DoAnimationEvent", "SetAnimationToHolo", function(ply, event, data)
+        if ply != owner() then return end
+        
+        //iHolo:setAnimation(event, 1, 0.1)
+    end)
+    /*
+    timer.simple(1, function()
+        net.start("StartSettingAnimation")
+        net.writeEntity(iHolo)
+        net.send()
+    end)*/
+end

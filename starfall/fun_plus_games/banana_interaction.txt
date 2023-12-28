@@ -23,7 +23,7 @@ hook.add("tick", "BananaInteraction", function()
         
         
         if ent:getModel() == "models/props_farm/scenes/bananana_peel.mdl" then
-            //ent:setColor(Color(0, 0, 0, 0))
+            ent:setColor(Color(0, 0, 0, 0))
             ent:remove()
         end
     end

@@ -1,0 +1,8 @@
+--@name
+--@author NepNep | discord: stirven
+--@server
+
+timer.create("ChangeTitle", 1, 0, function()
+    // <color=120, 120, 120>#coder <color=220,220,220>Current time - [13:59:59]
+    print(timer.curtime())
+end)

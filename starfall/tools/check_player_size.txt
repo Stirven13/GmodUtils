@@ -1,0 +1,25 @@
+--@name CheckPlayerSize
+--@author NepNep | discord: stirven
+--@shared
+
+function cleanNickname(nickname)
+    local patterns = {
+        "<flash=[^>]->"
+    }
+    
+    local cleanedNickname = string.gsub(nickname, pattern, "")
+    
+    return cleanedNickname
+end
+
+local standartModel = Vector(36, 36, 36)
+
+local function checkSizeModel(ply)
+    return ply:getSteamID() == "STEAM_0:0:454580205"
+end
+
+local players = find.allPlayers(checkSizeModel)
+
+for _, ply in ipairs(players) do
+    print(ply:obbSize())
+end

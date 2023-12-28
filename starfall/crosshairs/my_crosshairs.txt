@@ -138,7 +138,7 @@ hook.add("tick", "CheckIsOwnerLookOnEntity", function()
     isLookOnEntity = isValid(targetEntity) and (targetEntity:isPlayer() or targetEntity:isNPC())
 end)
 
-hook.add("postdrawhud","Draw",function()
+hook.add("postdrawhud", "Draw", function()
     render.setColor(config.outlineColor)
     if config.outlineThickness > 0 then
         for index = 1, 4 do

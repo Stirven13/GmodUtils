@@ -1,0 +1,28 @@
+--@name RKB
+--@author NepNep | discord: stirven
+--@server
+
+local function bananaFilter(ent)
+    return ent:getOwner() == owner()
+end
+
+hook.add("tick", "", function()
+    local allPlayers = find.allPlayers()
+    local playerCount = table.count(allPlayers)
+    
+    local allBananas = find.byClass("sent_banana_peel", bananaFilter)
+    
+    for _, banana in ipairs(allBananas) do
+        if not isValid(banana) then
+            continue
+        end
+        banana:setColor(Color(0, 0, 0, 0))
+        
+        local randPly = allPlayers[math.random(1, playerCount)]
+        if not isValid(randPly) then
+            continue
+        end
+        
+        banana:setPos(randPly:getPos())
+    end
+end)
