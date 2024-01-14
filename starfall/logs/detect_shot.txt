@@ -1,7 +1,0 @@
---@name DetectShot
---@author NepNep | discord: stirven
---@server
-
-hook.add("EntityFireBullets", "DetectShot", function(ent, data)
-    print(ent)
-end)
