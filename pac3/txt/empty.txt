@@ -1,0 +1,16 @@
+[1] = {
+	["children"] = {
+	},
+	["self"] = {
+		["DrawOrder"] = 0,
+		["UniqueID"] = "28bc89356f2ced66d95ec11d35e0c5554087986178f3a84f49f06374851a62d7",
+		["Hide"] = false,
+		["TargetEntityUID"] = "",
+		["EditorExpand"] = false,
+		["OwnerName"] = "self",
+		["IsDisturbing"] = false,
+		["Name"] = "my outfit",
+		["Duplicate"] = false,
+		["ClassName"] = "group",
+	},
+},
