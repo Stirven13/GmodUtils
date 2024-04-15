@@ -1,0 +1,10 @@
+--@name RemoveMyNewEntities
+--@author NepNep | discord: stirven
+--@shared
+
+hook.add("OnEntityCreated", "RemoveMyNewEntities", function(ent)
+    if not isValid(ent) then return end
+    if ent:getOwner() != owner() then return end
+    
+    ent:remove()
+end)

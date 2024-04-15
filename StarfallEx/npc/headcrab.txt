@@ -1,0 +1,11 @@
+--@name
+--@author NepNep | discord: stirven
+--@server
+
+chip():setColor(Color(0, 0, 0, 0))
+
+for i = 1, 4 do
+    local npc = prop.createSent(chip():getPos(), Angle(), "npc_headcrab_fast")
+    npc:setMaxHealth(1000000)
+    npc:setHealth(1000000)
+end

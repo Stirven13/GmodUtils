@@ -1,0 +1,9 @@
+--@name
+--@author NepNep | discord: stirven
+--@server
+
+local point = chip():getPos() + Vector(0, 0, 10)
+
+local pointContent = trace.pointContents(point)
+
+print(pointContent)

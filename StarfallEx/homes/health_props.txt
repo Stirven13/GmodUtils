@@ -1,0 +1,15 @@
+--@name Health Props
+--@author NepNep | discord: stirven
+--@server
+
+local function filterMyProp(ent)
+    return ent:getOwner() == owner()
+end
+
+local props = find.all(filterMyProp)
+
+print(table.count(props))
+
+for i, v in ipairs(props) do
+    v:setHealth(1)
+end

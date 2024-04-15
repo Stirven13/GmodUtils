@@ -1,0 +1,17 @@
+--@name Tool for Check weapon
+--@author NepNep | discord: stirven
+--@client
+
+--[[
+Starfall Scripting Environment
+
+Github: https://github.com/thegrb93/StarfallEx
+Reference Page: http://thegrb93.github.io/Starfall/
+
+Default Keyboard shortcuts: https://github.com/ajaxorg/ace/wiki/Default-Keyboard-Shortcuts
+]]
+
+hook.add("PlayerSwitchWeapon", "GetClassWeapon", function(ply, oldwep, newweapon)
+    if ply != owner() then return end
+    print("WeaponClass: " .. newweapon:getClass())
+end)

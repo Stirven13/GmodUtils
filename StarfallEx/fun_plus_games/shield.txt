@@ -1,0 +1,23 @@
+--@name
+--@author NepNep | discord: stirven
+--@server
+
+local props = {}
+
+for i = 1, 10 do
+    local cubeProp = prop.create()
+end
+
+local notReactWeapons = {
+    "weapon_fishing_rod", "weapon_bugbait", "gmod_camera", "weapon_medkit",
+    "gmod_tool", "lods", "weapon_physgun", "weapon_popcorn", "selfportrait_camera", 
+    "wowozela", "keypad_cracker", "repair_wrench", "weapon_help_book", "rp_keys", "swep_slap",
+    "weapon_extinguisher", "weapon_vape_american", "weapon_vape_butterfly", "weapon_vape_custom"
+    "weapon_vape_golden", "weapon_vape_hallucinogenic", "weapon_vape_helium", "weapon_vape_juicy",
+    "weapon_vape_medicinal", "weapon_vape", "laserpointer", "remotecontroller",
+    "weapon_simremote", "weapon_simrepair", "swep_simfphys_keys"
+}
+
+hook.add("tick", "", function()
+    local 
+end)

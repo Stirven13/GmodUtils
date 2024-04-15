@@ -1,0 +1,14 @@
+--@name Army
+--@author NepNep | discord: stirven
+--@server
+
+hook.add("OnEntityCreated", "ChangeNPC", function(ent)
+    if not isValid(ent) then return end
+    if ent:getOwner() != owner() then return end
+    if not ent:isNPC() then return end
+    
+    ent:setMaxHealth(1000000)
+    ent:setHealth(1000000)
+    
+    ent:setCollisionGroup(COLLISION_GROUP.IN_VEHICLE)
+end)

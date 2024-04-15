@@ -1,0 +1,273 @@
+--@name SizeChecker
+--@author NepNep | discord: stirven
+--@shared
+
+--[[
+    INSTRUCTION 
+    You need take Hands or Camera(gmod_camera) to work with this tool.
+    
+    LBM (Left Button Mouse) - To create a first point
+    RBM (Right Button Mouse) - To create a second point
+    
+    E (+use) - To create a new line or to see a prop size if see on prop
+    R (+reload) - To clear all lines
+]]
+
+local HologramInfo = class("HologramInfo")
+
+function HologramInfo:initialize()
+    self.start = nil
+    self.end_ = nil
+    self.line = nil
+    self.distance = nil
+    self.angle = nil
+    self.angle2 = nil
+end
+
+function HologramInfo:toTable()
+    return {
+        start = self.start:getPos(),
+        end_ = self.end_:getPos(),
+        line = self.line:getPos(),
+        distance = self.distance,
+        angle = self.angle,
+        angle2 = self.angle2
+    }
+end
+
+function HologramInfo:toTableOnlyPos()
+    return {
+        start = self.start:getPos(),
+        end_ = self.end_:getPos(),
+        line = self.line:getPos(),
+        distance = self.distance,
+        angle = self.angle,
+        angle2 = self.angle2
+    }
+end
+
+function HologramInfo:fromTable(tbl)
+    local hologram_ = HologramInfo:new()
+    hologram_.start = tbl.start
+    hologram_.end_ = tbl.end_
+    hologram_.line = tbl.line
+    hologram_.distance = tbl.distance
+    hologram_.angle = tbl.angle
+    hologram_.angle2 = tbl.angle2
+    return hologram_
+end
+
+function HologramInfo:print()
+    print("HologramInfo:")
+    print("", self.start)
+    print("", self.end_)
+    print("", self.line)
+    print("", self.distance)
+    print("", self.angle)
+    print("", self.angl2)
+end
+
+local holograms = { }
+
+if CLIENT then
+    if player() ~= owner() then return end
+    
+    enableHud(nil, true) 
+    
+    local isHaveHands = false
+    for k, v in pairs(owner():getWeapons()) do
+        if v:getClass() == "rp_keys" then
+            input.selectWeapon(v)
+            break
+        end
+    end
+    
+    local fontParameters = {
+        scale = 0.05,
+        font = render.createFont("Consolas", 256, 400, true),
+        color = Color(240, 240, 240)
+    }
+    
+    hook.add("PostDrawOpaqueRenderables", "RenderTexts", function()
+        render.enableDepth(true)
+        render.setColor(fontParameters["color"])
+        render.setFont(fontParameters["font"])
+        
+        local playerAimVector = owner():getAimVector() * Vector(-1, -1, -1) * 15
+        local playerEyeAngleY = (owner():getAngles().y + 360) % 360
+        local playerEyePos = owner():getEyePos()
+        
+        for index = 1, #holograms do
+            if holograms[index].start == nil or holograms[index].end_ == nil then continue end
+                       
+            local distanceFromLine, nearestPointOnLine, distanceAlongLine = math.distanceToLine(holograms[index].start, holograms[index].end_, playerEyePos)
+            
+            matrix = chip():getMatrix()
+            matrix:setTranslation(nearestPointOnLine + playerAimVector)
+            matrix:setAngles(holograms[index].angle + Angle(0, 0, 90))
+            matrix:setScale(Vector(fontParameters["scale"], -fontParameters["scale"]))
+            
+            render.pushMatrix(matrix)
+            render.drawSimpleText(0, 0, string.format("%.2f", holograms[index].distance), 1, 1)
+            render.popMatrix()
+            
+            
+            matrix = chip():getMatrix()
+            matrix:setTranslation(nearestPointOnLine + playerAimVector)
+            matrix:setAngles(holograms[index].angle2 + Angle(0, 0, 90))
+            matrix:setScale(Vector(fontParameters["scale"], -fontParameters["scale"]))
+            
+            render.pushMatrix(matrix)
+            render.drawSimpleText(0, 0, string.format("%.2f", holograms[index].distance), 1, 1)
+            render.popMatrix()
+        end
+    end)
+    
+    net.receive("netSendHologram", function()
+        countRepeat = net.readInt(16)
+        table.empty(holograms)
+        for index = 1, countRepeat do
+            pcall(table.insert(holograms, HologramInfo:fromTable(net.readTable())))
+        end
+    end)
+    
+    local switchKeyPressDetectKeys = {
+        [IN_KEY.ATTACK] = function(ply)
+            net.start("newPoint")
+            net.writeInt(IN_KEY.ATTACK, 16)
+            net.writeVector(ply:getEyeTrace().HitPos)
+            net.send()
+        end,
+    
+        [IN_KEY.ATTACK2] = function(ply)
+            net.start("newPoint")
+            net.writeInt(IN_KEY.ATTACK2, 16)
+            net.writeVector(ply:getEyeTrace().HitPos)
+            net.send()
+        end,
+    
+        [IN_KEY.USE] = function(ply)
+            tracedEntity = ply:getEyeTrace().Entity
+            status, result = pcall(function()
+                min_size, max_size = tracedEntity:getModelBounds()
+            end)
+            if status and tracedEntity:entIndex() ~= 0 then
+                print(tracedEntity)
+                print(string.format("Size of prop:\t%.2f, %.2f, %.2f", max_size.x + math.abs(min_size.x), max_size.y + math.abs(min_size.y), max_size.z + math.abs(min_size.z)))
+            else
+                net.start("newLine")
+                net.send()
+            end
+        end,
+    
+        [IN_KEY.RELOAD] = function(ply)
+            net.start("resetHolograms")
+            net.send()
+        end
+    }
+    
+    hook.add("KeyRelease", "DetectKeys", function(ply, button)
+        if ply ~= owner() then return end
+        if not table.hasValue({"rp_keys", "Hands", "Camera", "none"}, ply:getActiveWeapon():getClass()) then return end
+        
+        if switchKeyPressDetectKeys[button] ~= nil then
+            switchKeyPressDetectKeys[button](ply)
+        end
+    end)
+
+
+
+elseif SERVER then
+    table.insert(holograms, HologramInfo:new())
+    
+    local colors = {
+        ["start"] = Color(255, 76, 76, 192),
+        ["end"] = Color(51, 153, 255, 192),
+        ["line"] = Color(255, 255, 255, 192)
+    }
+    
+    local switchNewPoint = {
+        [IN_KEY.ATTACK] = function(vectorPoint)
+            if holograms[table.count(holograms)].start == nil then
+                holograms[table.count(holograms)].start = hologram.create(Vector(), Angle(), "models/starfall/holograms/box.mdl", Vector(3, 3, 3))
+                holograms[table.count(holograms)].start:setColor(colors["start"])
+                holograms[table.count(holograms)].start:suppressEngineLighting(true)
+            end
+            holograms[table.count(holograms)].start:setPos(vectorPoint)
+        end,
+        
+        [IN_KEY.ATTACK2] = function(vectorPoint)
+            if holograms[table.count(holograms)].end_ == nil then
+                holograms[table.count(holograms)].end_ = hologram.create(Vector(), Angle(), "models/starfall/holograms/box.mdl", Vector(3, 3, 3))
+                holograms[table.count(holograms)].end_:setColor(colors["end"])
+                holograms[table.count(holograms)].end_:suppressEngineLighting(true)
+            end
+            holograms[table.count(holograms)].end_:setPos(vectorPoint)
+        end
+    }
+    
+    net.receive("newPoint", function()
+        switchNewPoint[net.readInt(16)](net.readVector())
+        if holograms[table.count(holograms)].start == nil or holograms[table.count(holograms)].end_ == nil then return end
+        
+        if holograms[table.count(holograms)].line == nil then
+            holograms[table.count(holograms)].line = hologram.create(Vector(), Angle(), "models/starfall/holograms/box.mdl", Vector())
+            holograms[table.count(holograms)].line:suppressEngineLighting(true)
+            holograms[table.count(holograms)].line:setColor(colors["line"])
+        end
+        
+        distance = holograms[table.count(holograms)].start:getPos() :getDistance(  holograms[table.count(holograms)].end_:getPos()  )
+        
+        holograms[table.count(holograms)].line:setPos(  (holograms[table.count(holograms)].start:getPos() + holograms[table.count(holograms)].end_:getPos()) / 2  )
+        holograms[table.count(holograms)].line:setScale(Vector(distance, 1, 1))
+        
+        angle = ( holograms[table.count(holograms)].start:getPos()-holograms[table.count(holograms)].end_:getPos() ):getAngle()
+        angle2 = ( holograms[table.count(holograms)].end_:getPos()-holograms[table.count(holograms)].start:getPos() ):getAngle()
+        holograms[table.count(holograms)].line:setAngles(angle)
+        
+        holograms[table.count(holograms)].distance = distance
+        holograms[table.count(holograms)].angle = angle
+        holograms[table.count(holograms)].angle2 = angle2
+        
+        syncHologram()
+    end)
+    
+    net.receive("newLine", function()
+        if holograms[table.count(holograms)].start ~= nil and holograms[table.count(holograms)].end_ ~= nil then
+            table.insert(holograms, HologramInfo:new() )
+        end
+    end)
+    
+    net.receive("resetHolograms", function()
+        for index = 1, #holograms do
+            removeHologramWithCheck(holograms[index].start)
+            removeHologramWithCheck(holograms[index].end_)
+            removeHologramWithCheck(holograms[index].line)
+        end
+        table.empty(holograms)
+        table.insert(holograms, HologramInfo:new())
+        syncHologram()
+    end)
+    
+    function syncHologram()
+        net.start("netSendHologram")
+        net.writeInt(table.count(holograms), 16)
+        for index = 1, table.count(holograms) do
+            if holograms[index].line != nil then 
+                net.writeTable(holograms[index]:toTableOnlyPos())
+            end
+        end
+        net.send()
+    end
+end
+
+function removeHologramWithCheck(hologram_)
+    if hologram_ == nil then return end
+    hologram_:remove()
+end
+
+function findAngleBetween(num1, num2)
+    angle = math.abs(num1 - num2)
+    if angle > 180 then angle = 360 - angle end
+    return angle
+end

@@ -1,0 +1,38 @@
+--@name Find Nearest Point On Trail
+--@author NepNep | discord: stirven
+--@client
+
+if player() != owner() then return end
+
+local trailString = file.read("trail.json")
+local trailData = json.decode(trailString)
+
+local countPoint = table.count(trailData)
+
+local corectionAngle = Angle(0, -90, 0)
+
+local function findIndexOfNearestPoint(point)
+    local bestIndex = 1
+    local bestDistanceSqr = point:getDistanceSqr(trailData[1].vector)
+    
+    for index, trailPointData in ipairs(trailData) do
+        local currentDistance = point:getDistanceSqr(trailPointData.vector)
+        
+        if currentDistance < bestDistanceSqr then
+            bestIndex = index
+            bestDistanceSqr = currentDistance
+        end
+    end
+    
+    return bestIndex
+end
+
+local hologramOnTrail = hologram.create(Vector(), Angle(), "models/nova/chair_wood01.mdl")
+
+hook.add("tick", "SetPosForHolo", function()
+    local nearesIndexPointFromChipToTrail = findIndexOfNearestPoint(chip():getPos())
+    local nearestPointData = trailData[nearesIndexPointFromChipToTrail]
+    
+    hologramOnTrail:setPos(nearestPointData.vector)
+    hologramOnTrail:setAngles(nearestPointData.angle + corectionAngle)
+end)

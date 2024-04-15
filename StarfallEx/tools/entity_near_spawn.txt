@@ -1,0 +1,14 @@
+--@name Entity Near Spawn
+--@author NepNep | discord: stirven
+--@server
+
+local distance = 300
+
+local distanceSqrt = distance * distance
+
+hook.add("OnEntityCreated", "FindEntity", function(ent)
+    if not isValid(ent) then return end
+    if ent:getPos():getDistanceSqr(owner():getPos()) > distanceSqrt then return end
+    print(ent:getOwner())
+    print(ent)
+end)

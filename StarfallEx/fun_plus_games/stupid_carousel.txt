@@ -1,0 +1,21 @@
+--@name CarouselPizdec
+--@author NepNep | discord: stirven
+--@server
+
+local speedInDegree = 10000
+
+local carousel = prop.create(chip():getPos(), Angle(), "models/props_c17/playground_carousel01.mdl")
+
+hook.add("tick", "ChangeAnglesOfCarousel", function()
+    if carousel:isFrozen() then
+        carousel:setFrozen(false)
+    end
+    
+    local carouselAngle = carousel:getAngles()
+    carouselAngle.p = math.clamp(carouselAngle.p, -5, 5)
+    carouselAngle.r = math.clamp(carouselAngle.r, -5, 5)
+    carousel:setAngles(carouselAngle)
+    
+    carousel:setPos(chip():getPos())
+    carousel:setAngleVelocity(Vector(0, 0, speedInDegree))
+end)

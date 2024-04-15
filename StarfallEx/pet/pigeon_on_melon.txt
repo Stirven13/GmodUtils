@@ -1,0 +1,134 @@
+--@name PigeonOnMelon
+--@author NepNep | discord: stirven
+--@server
+
+local pideonAngleProgress = 0.4
+
+ANIMATIONS = {
+    FLY = 0,
+    IDLE = 1,
+    WALK = 2,
+    RUN = 3,
+    EAT_A = 4,
+    EAT_B = 5,
+    JUMP = 6,
+    SOAR = 7,
+    WALK_LANDING = 8,
+    WALK_SMOOTH_LANDING = 9,
+    RUN_LANDING = 10,
+    RUN_SMOOTH_LANDING = 11
+}
+
+local function changeMelon(melon)
+    melon:setColor(Color(0, 0, 0, 1))
+end
+
+local function findMyMelon()
+    local melons = find.byClass("sent_melon")
+
+    for _, melon in ipairs(melons) do
+        if melon:getOwner() == owner() then
+            changeMelon(melon)
+            return melon
+        end
+    end 
+end
+
+local function spawnPigeon()
+    local pigeon = hologram.create(chip():getPos(), Angle(), "models/pigeon.mdl")
+    isAnimation = false
+    lastAnimation = nil
+    
+    return pigeon
+end
+
+local myMelon = findMyMelon()
+local pigeon = spawnPigeon()
+
+local isAnimation = false
+local lastAnimation = nil
+
+if not isValid(myMelon) then
+    print("Buy and set melon in shop")
+end
+
+local function pigeonDoIdle()
+    if pigeon:getPos() != chip():getPos() then
+        pigeon:setPos(chip():getPos())
+    end
+    pigeon:setAnimation(ANIMATIONS.IDLE)
+end
+
+local function setPigeonAngle()
+    local pigeonAngle = pigeon:getAngles()
+    local velocityMyMelon = myMelon:getVelocity()
+    
+    if velocityMyMelon:getLengthSqr() < 100 then
+        return
+    end
+    
+    local velocityAngle = velocityMyMelon:getAngle()    
+    local interpolatedAngle = math.lerpAngle(pideonAngleProgress, pigeonAngle, velocityAngle)
+    
+    interpolatedAngle.p = math.clamp(interpolatedAngle.p, -10, 10) // pyr
+    pigeon:setAngles(interpolatedAngle)
+end
+
+local function functionForCheckMelonOnGround(ent)
+    return ent != myMelon
+end
+
+local function checkPigeonOnGround()
+    return trace.line(pigeon:getPos(), pigeon:getPos() - Vector(0, 0, 10), functionForCheckMelonOnGround).Hit
+end
+
+local function funcToSetPigeonAnimation(animationValue, delay)
+    if isAnimation then return end
+    if lastAnimation == animationValue then return end
+    lastAnimation = animationValue
+    pigeon:setAnimation(animationValue)
+    if delay then
+        isAnimation = true
+        timer.simple(delay, function()
+            isAnimation = false
+        end)
+    else
+        isAnimation = false
+    end
+end
+
+local function setAnimation()
+    local isOnGround = checkPigeonOnGround()
+    local pigeonVelocity = myMelon:getVelocity()
+    local pigeonVelocitySpeed = myMelon:getVelocity():getLengthSqr()
+    
+    if not isOnGround and pigeonVelocity.z < 900 and pigeonVelocitySpeed < 900 then
+        funcToSetPigeonAnimation(ANIMATIONS.SOAR)
+    elseif table.hasValue({ANIMATIONS.FLY, ANIMATIONS.JUMP, ANIMATIONS.SOAR}, lastAnimation) and isOnGround and pigeonVelocitySpeed > 900 then
+        funcToSetPigeonAnimation(ANIMATIONS.RUN_LANDING, 0.4)
+    elseif table.hasValue({ANIMATIONS.FLY, ANIMATIONS.JUMP, ANIMATIONS.SOAR}, lastAnimation) and isOnGround then
+        funcToSetPigeonAnimation(ANIMATIONS.WALK_LANDING, 0.7)
+    elseif pigeonVelocitySpeed < 25 and isOnGround then
+        funcToSetPigeonAnimation(ANIMATIONS.IDLE)
+    elseif table.hasValue({ANIMATIONS.IDLE, ANIMATIONS.WALK, ANIMATIONS.RUN}, lastAnimation) and not isOnGround and pigeonVelocitySpeed > 100 then
+        funcToSetPigeonAnimation(ANIMATIONS.JUMP, 1.2)
+    elseif pigeonVelocitySpeed < 1600 and isOnGround then
+        funcToSetPigeonAnimation(ANIMATIONS.WALK, 0.1)
+    else
+       funcToSetPigeonAnimation(ANIMATIONS.RUN) 
+    end
+end
+
+hook.add("tick", "UpdatePigeon", function()
+    if not isValid(myMelon) then
+        pigeonDoIdle()
+        myMelon = findMyMelon()
+    end
+    if not isValid(pigeon) then
+        pigeon = spawnPigeon()
+    end
+    
+    pigeon:setPos(myMelon:getPos() - Vector(0, 0, 7))
+    setPigeonAngle()
+    setAnimation()
+end)

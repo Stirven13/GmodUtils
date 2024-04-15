@@ -1,0 +1,368 @@
+--@name PigeonOnMelon PlusControl
+--@author NepNep | discord: stirven
+--@shared
+
+local MODELS = {
+    CROW = "models/crow.mdl",
+    PIGEON = "models/pigeon.mdl"
+}
+
+local currentModel = MODELS.PIGEON
+
+if player() != owner() then return end
+
+// Detecting keys
+local pressedKeys = {
+    [IN_KEY.ALT1] = false,
+    [IN_KEY.ALT2] = false,
+    [IN_KEY.ATTACK] = false,
+    [IN_KEY.ATTACK2] = false,
+    [IN_KEY.BACK] = false,
+    [IN_KEY.DUCK] = false,
+    [IN_KEY.FORWARD] = false,
+    [IN_KEY.JUMP] = false,
+    [IN_KEY.LEFT] = false,
+    [IN_KEY.MOVELEFT] = false,
+    [IN_KEY.MOVERIGHT] = false,
+    [IN_KEY.RELOAD] = false,
+    [IN_KEY.RIGHT] = false,
+    [IN_KEY.SCORE] = false,
+    [IN_KEY.SPEED] = false,
+    [IN_KEY.USE] = false,
+    [IN_KEY.WALK] = false,
+    [IN_KEY.ZOOM] = false,
+    [IN_KEY.GRENADE1] = false,
+    [IN_KEY.GRENADE2] = false,
+    [IN_KEY.WEAPON1] = false,
+    [IN_KEY.WEAPON2] = false,
+    [IN_KEY.BULLRUSH] = false,
+    [IN_KEY.CANCEL] = false,
+    [IN_KEY.RUN] = false
+}
+
+hook.add("KeyPress", "KeyPress", function(ply, key)
+    if ply ~= owner() then return end
+    pressedKeys[key] = true
+end)
+
+hook.add("KeyRelease", "KeyRelease", function(ply, key)
+    if ply ~= owner() then return end
+    pressedKeys[key] = false
+end)
+
+
+local isDriving = false
+local pigeon = nil
+
+if CLIENT then
+    enableHud(owner(), true)
+    // Just optimization, nothing more
+    calcInterface = {
+        
+    }
+    
+    net.receive("SyncIsDriving", function()
+        isDriving = net.readBool()
+    end)
+    
+    net.receive("SyncPigeon", function()
+        pigeon = net.readEntity()
+    end)
+    
+    hook.add("CalcView", "PigeonCalcView", function(pos, ang, fov, znear, zfar)
+        if not isValid(pigeon) then return end
+        if not isDriving then return end
+        
+        local newView = {
+            origin = pigeon:getPos() + Vector(0, 0, 30) ,
+            angles = ang,
+            fov = fov,
+            drawviewer = true
+        }
+        
+        return newView
+    end)
+    
+    
+elseif SERVER then
+    // INIT
+    local pideonAngleProgress = 0.4
+    
+    local myMelon = nil
+    local sphereProp = nil
+    
+    local isAnimation = false
+    local lastAnimation = nil
+    
+    local isChangeDriving = false
+    local firstStartOfDriving = false
+    
+    
+    // Enums
+    local ANIMATIONS = {
+        FLY = 0,
+        IDLE = 1,
+        WALK = 2,
+        RUN = 3,
+        EAT_A = 4,
+        EAT_B = 5,
+        JUMP = 6,
+        SOAR = 7,
+        WALK_LANDING = 8,
+        WALK_SMOOTH_LANDING = 9,
+        RUN_LANDING = 10,
+        RUN_SMOOTH_LANDING = 11
+    }
+    
+    local PIGEONSPEED = {
+        SLOWWALK = 100,
+        WALK = 400,
+        SPEED = 1000
+    }
+    
+    local soundsFly = {
+        "ambient/animal/bird_flapping_1.wav",
+        "ambient/animal/bird_flapping_2.wav",
+        "ambient/animal/bird_flapping_3.wav"
+    }
+    
+    local flashlightSound = "items/flashlight1.wav"
+    
+    
+    // Default function
+    local function changeMelon(melon)
+        melon:setColor(Color(0, 0, 0, 1))
+    end
+
+    local function findMyMelon()
+        local melons = find.byClass("sent_melon")
+    
+        for _, melon in ipairs(melons) do
+            if melon:getOwner() == owner() then
+                changeMelon(melon)
+                print(melon:setCollisionGroup(COLLISION_GROUP.NONE))
+                return melon
+            end
+        end
+    end
+    
+    local function spawnPigeon()
+        local pigeon = hologram.create(chip():getPos(), Angle(), currentModel)
+        isAnimation = false
+        lastAnimation = nil
+        
+        timer.simple(1, function()
+            net.start("SyncPigeon")
+            net.writeEntity(pigeon)
+            net.send()
+        end)
+        
+        return pigeon
+    end
+    
+    local function spawnBallProp()
+        local sphereProp = prop.create(myMelon:getPos(), Angle(), "models/hunter/misc/sphere025x025.mdl")
+        sphereProp:setColor(Color(0, 0, 0, 0))
+        sphereProp:setMass(1)
+        sphereProp:setMaxHealth(1000000)
+        sphereProp:setHealth(1000000)
+        return sphereProp
+    end
+    
+    local function pigeonDoIdle()
+        if pigeon:getPos() != chip():getPos() then
+            pigeon:setPos(chip():getPos())
+        end
+        pigeon:setAnimation(ANIMATIONS.IDLE)
+    end
+    
+    local function setPigeonAngleMelonAngle()
+        local pigeonAngle = pigeon:getAngles()
+        local velocityMyMelon = myMelon:getVelocity()
+        
+        if velocityMyMelon:getLengthSqr() < 100 then
+            return
+        end
+        
+        local velocityAngle = velocityMyMelon:getAngle()    
+        local interpolatedAngle = math.lerpAngle(pideonAngleProgress, pigeonAngle, velocityAngle)
+        
+        interpolatedAngle.p = math.clamp(interpolatedAngle.p, -10, 10) // pyr
+        pigeon:setAngles(interpolatedAngle)
+    end
+    
+    local function setPigeonAngleOwner()
+        local pigeonNewAngles = owner():getAimVector():getAngle()
+        pigeonNewAngles.p = math.clamp(pigeonNewAngles.p, -10, 10)
+        pigeon:setAngles(pigeonNewAngles)
+    end
+    
+    local function functionForCheckMelonOnGround(ent)
+        return ent != myMelon and ent != sphereProp
+    end
+    
+    local function checkPigeonOnGround()
+        return trace.line(pigeon:getPos(), pigeon:getPos() - Vector(0, 0, 20), functionForCheckMelonOnGround).Hit
+    end
+    
+    local function funcToSetPigeonAnimation(animationValue, delay)
+        if isAnimation then return end
+        if lastAnimation == animationValue then return end
+        lastAnimation = animationValue
+        pigeon:setAnimation(animationValue)
+        if delay then
+            isAnimation = true
+            timer.simple(delay, function()
+                isAnimation = false
+            end)
+        else
+            isAnimation = false
+        end
+    end
+    
+    local function setAnimationMelonLogic()
+        local isOnGround = checkPigeonOnGround()
+        local pigeonVelocity = myMelon:getVelocity()
+        local pigeonVelocitySpeed = myMelon:getVelocity():getLengthSqr()
+        
+        if not isOnGround and pigeonVelocity.z < 900 and pigeonVelocitySpeed < 900 then
+            funcToSetPigeonAnimation(ANIMATIONS.SOAR)
+        elseif table.hasValue({ANIMATIONS.FLY, ANIMATIONS.JUMP, ANIMATIONS.SOAR}, lastAnimation) and isOnGround and pigeonVelocitySpeed > 900 then
+            funcToSetPigeonAnimation(ANIMATIONS.RUN_LANDING, 0.4)
+        elseif table.hasValue({ANIMATIONS.FLY, ANIMATIONS.JUMP, ANIMATIONS.SOAR}, lastAnimation) and isOnGround then
+            funcToSetPigeonAnimation(ANIMATIONS.WALK_LANDING, 0.7)
+        elseif pigeonVelocitySpeed < 25 and isOnGround then
+            funcToSetPigeonAnimation(ANIMATIONS.IDLE)
+        elseif table.hasValue({ANIMATIONS.IDLE, ANIMATIONS.WALK, ANIMATIONS.RUN}, lastAnimation) and not isOnGround and pigeonVelocitySpeed > 100 then
+            funcToSetPigeonAnimation(ANIMATIONS.JUMP, 0.7)
+        elseif pigeonVelocitySpeed < 2500 and isOnGround then
+            funcToSetPigeonAnimation(ANIMATIONS.WALK, 0.1)
+        elseif isOnGround then
+            funcToSetPigeonAnimation(ANIMATIONS.RUN)
+        else
+           funcToSetPigeonAnimation(ANIMATIONS.FLY)
+        end
+    end
+    
+    local function setAnimationOwnerControlLogic()
+        local isOnGround = checkPigeonOnGround()
+        
+        if not pressedKeys[IN_KEY.FORWARD] and not pressedKeys[IN_KEY.BACK] and not pressedKeys[IN_KEY.MOVELEFT] and not pressedKeys[IN_KEY.MOVERIGHT] and not pressedKeys[IN_KEY.JUMP] and not isOnGround then
+            funcToSetPigeonAnimation(ANIMATIONS.SOAR)
+        elseif isOnGround and table.hasValue({ANIMATIONS.FLY, ANIMATIONS.JUMP, ANIMATIONS.SOAR}, lastAnimation) and pressedKeys[IN_KEY.DUCK] then
+            funcToSetPigeonAnimation(ANIMATIONS.RUN_LANDING, 0.4)
+        elseif isOnGround and table.hasValue({ANIMATIONS.FLY, ANIMATIONS.JUMP, ANIMATIONS.SOAR}, lastAnimation) then
+            funcToSetPigeonAnimation(ANIMATIONS.WALK_LANDING, 0.7)
+        elseif not pressedKeys[IN_KEY.FORWARD] and not pressedKeys[IN_KEY.BACK] and not pressedKeys[IN_KEY.MOVELEFT] and not pressedKeys[IN_KEY.MOVERIGHT] and isOnGround then
+            funcToSetPigeonAnimation(ANIMATIONS.IDLE)
+        elseif pressedKeys[IN_KEY.JUMP] and not table.hasValue({ANIMATIONS.FLY, ANIMATIONS.SOAR}, lastAnimation) then
+            funcToSetPigeonAnimation(ANIMATIONS.JUMP, 0.7)
+        elseif (pressedKeys[IN_KEY.FORWARD] or pressedKeys[IN_KEY.BACK] or pressedKeys[IN_KEY.MOVELEFT] or pressedKeys[IN_KEY.MOVERIGHT]) and isOnGround and pressedKeys[IN_KEY.WALK] then
+            funcToSetPigeonAnimation(ANIMATIONS.WALK, 0.1)
+        elseif (pressedKeys[IN_KEY.FORWARD] or pressedKeys[IN_KEY.BACK] or pressedKeys[IN_KEY.MOVELEFT] or pressedKeys[IN_KEY.MOVERIGHT]) and isOnGround then
+            funcToSetPigeonAnimation(ANIMATIONS.RUN)
+        elseif not isOnGround then
+            funcToSetPigeonAnimation(ANIMATIONS.FLY)
+        end
+    end
+    
+    local function calculateControlSphere()
+        local currentPigeonSpeed = PIGEONSPEED.WALK
+        local degreeY = owner():getAimVector():getAngle().y
+        
+        if pressedKeys[IN_KEY.SPEED] then
+            currentPigeonSpeed = PIGEONSPEED.SPEED
+        elseif pressedKeys[IN_KEY.WALK] then
+            currentPigeonSpeed = PIGEONSPEED.SLOWWALK
+        end
+        
+        if pressedKeys[IN_KEY.FORWARD] and not pressedKeys[IN_KEY.BACK] then
+            sphereProp:addVelocity(Vector(math.cos(math.rad(degreeY)) * currentPigeonSpeed, math.sin(math.rad(degreeY)) * currentPigeonSpeed, 0))
+        elseif pressedKeys[IN_KEY.BACK] and not pressedKeys[IN_KEY.FORWARD] then
+            sphereProp:addVelocity(Vector(math.cos(math.rad(degreeY)) * -currentPigeonSpeed, math.sin(math.rad(degreeY)) * -currentPigeonSpeed, 0))
+        end
+        
+        if pressedKeys[IN_KEY.MOVELEFT] and not pressedKeys[IN_KEY.MOVERIGHT] then
+            sphereProp:addVelocity(Vector(math.cos(math.rad(degreeY + 90)) * currentPigeonSpeed, math.sin(math.rad(degreeY + 90)) * currentPigeonSpeed, 0))
+        elseif pressedKeys[IN_KEY.MOVERIGHT] and not pressedKeys[IN_KEY.MOVELEFT] then
+            sphereProp:addVelocity(Vector(math.cos(math.rad(degreeY + 90)) * -currentPigeonSpeed, math.sin(math.rad(degreeY + 90)) * -currentPigeonSpeed, 0))
+        end
+        
+        if pressedKeys[IN_KEY.JUMP] and not pressedKeys[IN_KEY.DUCK] then
+            sphereProp:addVelocity(Vector(0, 0, currentPigeonSpeed))               
+        elseif pressedKeys[IN_KEY.DUCK] and not pressedKeys[IN_KEY.JUMP] then
+            sphereProp:addVelocity(Vector(0, 0, -currentPigeonSpeed))               
+        end
+    end
+    
+    hook.add("tick", "CheckIsDriving", function()
+        if not owner():inVehicle() and isDriving then
+            isDriving = false
+            isChangeDriving = false
+            net.start("SyncIsDriving")
+            net.writeBool(isDriving)
+            net.send()
+        end
+        if isValid(owner():getVehicle()) and pressedKeys[IN_KEY.WALK] and pressedKeys[IN_KEY.SPEED] then
+            if not isChangeDriving then
+                isDriving = not isDriving            
+                isChangeDriving = true
+                net.start("SyncIsDriving")
+                net.writeBool(isDriving)
+                net.send()
+            end
+        else
+            isChangeDriving = false
+        end
+    end)
+    
+    local function checkAndSetCollision()
+        if isDriving then
+            if myMelon:getCollisionGroup() != COLLISION_GROUP.WORLD then
+                myMelon:setCollisionGroup(COLLISION_GROUP.WORLD)
+            end
+        else
+            if myMelon:getCollisionGroup() != COLLISION_GROUP.WEAPON then
+                myMelon:setCollisionGroup(COLLISION_GROUP.WEAPON)
+            end
+        end
+    end
+    
+    hook.add("tick", "UpdatePigeon", function()
+        if not isValid(pigeon) then
+            pigeon = spawnPigeon()
+        end
+        if not isValid(myMelon) then
+            pigeonDoIdle()
+            myMelon = findMyMelon()
+            return
+        end
+        
+        checkAndSetCollision()
+        
+        if isDriving then
+            pcall(function()
+                if not isValid(sphereProp) then
+                    sphereProp = spawnBallProp()
+                end
+                if sphereProp:isFrozen() then
+                    sphereProp:setFrozen(false)
+                end
+                setAnimationOwnerControlLogic()
+                setPigeonAngleOwner()
+                pigeon:setPos(sphereProp:getPos())
+                sphereProp:setAngles(owner():getAimVector():getAngle())
+                sphereProp:setAngleVelocity(Vector(0))
+                myMelon:setPos(pigeon:getPos())
+                calculateControlSphere()
+            end)
+        else
+            if isValid(sphereProp) then
+                sphereProp:remove()
+            end
+            pigeon:setPos(myMelon:getPos() - Vector(0, 0, 7))
+            setPigeonAngleMelonAngle()
+            setAnimationMelonLogic()
+        end
+    end)
+end

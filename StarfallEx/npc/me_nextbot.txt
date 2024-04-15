@@ -1,0 +1,346 @@
+--@name Me Nextbot
+--@author NepNep | discord: stirven
+--@shared
+
+local dataParameters = {
+    sounds = {
+        flashlight1 = "items/flashlight1.wav",
+        scanner_photo1 = "npc/scanner/scanner_photo1.wav"
+    },
+    act = {
+        gesture = {
+            ACT_GMOD_GESTURE_WAVE = 1615
+        },
+        movement = {
+            ACT_HL2MP_WALK = 1778,
+            ACT_HL2MP_RUN = 1779,
+            ACT_HL2MP_IDLE_CROUCH = 1780,
+            ACT_HL2MP_WALK_CROUCH = 1781
+        },
+        stay = {
+            ACT_HL2MP_IDLE_CAMERA = 1673,
+            ACT_HL2MP_IDLE_SUITCASE = 1713,
+            ACT_HL2MP_IDLE = 1777
+        }
+    },
+    speed = {
+        stay = 0,
+        crouch = 60,
+        slowWalk = 100,
+        walk = 200,
+        run = 400,
+        fastRun = 600,
+        maximum = 1024
+    },
+    cooldowns = {
+        minAttractWithSoundFlashlight = math.round(1 / timer.frametime() / 7),
+        maxAttractWithSoundFlashlight = math.round(1 / timer.frametime() / 4)
+    },
+    parameters = {
+        maxNumberToTryAttractAttentionWithFlashlight = 10
+    },
+    limits = {
+        maxCountRecoedsNavAreas = 10,
+        minNeededNavAreas = 3,
+        maxCountPoses = math.round(1 / timer.frametime()) * 10,
+        minNeededPoses = 5,
+    }
+}
+
+local enums = {
+    tasks = {
+        FindPlayer = 1,
+        GoToPlayer = 2,
+        Act = 3,
+        End = 4
+    },
+    acts = {
+        AttractAttention = {
+            value = 1,
+            progress = {
+                waitingPlayer = 1,
+                limitReached = 2
+            }
+        },
+        MakeAPhoto = {
+            value = 2,
+            progress = {
+                takeCamera = 1,
+                waitTakeCamera = 2,
+                makePhoto = 3,
+                waitMakePhoto = 4
+            }
+        }
+    }
+}
+
+
+local MeNextbot = class("MeNextbot")
+
+function MeNextbot:initialize()
+    self.bot = nextbot.create(chip():getPos() + Vector(0, 0, 10), owner():getModel())
+    
+    self.cameraProp = hologram.create(chip():getPos() - Vector(0, 0, 20), Angle(), "models/maxofs2d/camera.mdl")
+    
+    self.boneRightHand = self.bot:lookupBone("ValveBiped.Bip01_R_Hand")
+    self.boneLeftHand = self.bot:lookupBone("ValveBiped.Bip01_L_Hand")
+    
+    self.targetPlayer = nil
+    
+    self.bot:setMoveSpeed(dataParameters.speed.run)
+    self.bot:setRunAct(dataParameters.act.movement.ACT_HL2MP_RUN)
+    self.bot:setIdleAct(dataParameters.act.stay.ACT_HL2MP_IDLE)
+    self.bot:setGotoPos(chip():getPos() + Vector(0, 0, 1))
+    self.bot:setStepHeight(30)
+    
+    self.currentTask = enums.tasks.FindPlayer
+    
+    self.selectedAct = enums.acts.AttractAttention.value
+    self.progressAct = 1
+    
+    self.cooldowns = {
+        attractWithSoundFlashlight = 0
+    }
+    
+    self.parameters = {
+        currentNumberToTryAttractAttentionWithFlashlight = 0
+    }
+    
+    self:addCallback()
+    
+    self.lastPoses = {}
+    self.lastNavArea = nil
+    self.navAreas = {}
+end
+    
+function MeNextbot:addCallback()
+    self.bot:addNavChangeCallback("checkIsAreaTraversable", function(oldNavArea, newNavArea)
+        self.lastNavArea = newNavArea
+        
+        // Most time nextbot:isAreaTraversable return true, so i create a this func.
+        table.insert(self.navAreas, newNavArea:getID())
+        if table.count(self.navAreas) >= dataParameters.limits.maxCountRecoedsNavAreas then
+            local originalElements = {}
+            for index = 1, #self.navAreas do
+                if not table.hasValue(originalElements, self.navAreas[index]) then
+                    table.insert(originalElements, self.navAreas[index])
+                    if table.count(originalElements) > dataParameters.limits.minNeededNavAreas then
+                        table.empty(self.navAreas)
+                        return
+                    end
+                end
+            end
+            if table.count(originalElements) <= dataParameters.limits.minNeededNavAreas then
+                self.currentTask = enums.tasks.FindPlayer
+            end
+            table.empty(self.navAreas)
+        end
+    end)
+end
+
+function MeNextbot:checkCorrect()
+    if not isValid(self.bot) then
+        hook.remove("think", "bot_think")
+        chip():remove()
+    end
+    if not isValid(self.targetPlayer) or self.targetPlayer:getHealth() == 0 then
+        self.bot:removeGotoPos()            
+        self.currentTask = enums.tasks.FindPlayer
+        
+        self.selectedAct = enums.acts.AttractAttention.value
+        self.progressAct = 1
+            
+        self.cooldowns = {
+            attractWithSoundFlashlight = 0
+        }
+            
+        self.parameters = {
+            currentNumberToTryAttractAttentionWithFlashlight = 0
+        }
+    end
+    if self.lastNavArea ~= nil then
+        if not self.bot:isAreaTraversable(self.lastNavArea) then
+            self.currentTask = enums.tasks.FindPlayer
+            self.bot:removeGotoPos()
+        end
+    end
+    if table.count(self.lastPoses) >= dataParameters.limits.maxCountPoses then
+        local originalElements = {}
+        for index = 1, #self.lastPoses do
+            if not table.hasValue(originalElements, self.lastPoses[index]) then
+                table.insert(originalElements, self.lastPoses[index])
+                if table.count(originalElements) > dataParameters.limits.minNeededNavAreas then
+                    table.empty(self.lastPoses)
+                    return
+                end
+            end
+        end
+        if table.count(originalElements) <= dataParameters.limits.minNeededNavAreas then
+            self.currentTask = enums.tasks.FindPlayer
+            
+            
+        end
+        table.empty(self.lastPoses)
+    end
+    if table.count(self.lastPoses) < dataParameters.limits.maxCountPoses then
+    end
+end
+
+function MeNextbot:think()    
+    hook.add("think", "bot_think", function()
+        table.insert(self.lastPoses, self.bot:getPos())
+        
+        
+        
+        self:checkCorrect()
+        
+        if self.currentTask == enums.tasks.FindPlayer then
+            self:selectTargetPlayer()
+            self.currentTask = enums.tasks.GoToPlayer
+            
+            
+        elseif self.currentTask == enums.tasks.GoToPlayer then
+            self.bot:setRunAct(dataParameters.act.movement.ACT_HL2MP_RUN)
+            self.bot:setIdleAct(dataParameters.act.stay.ACT_HL2MP_IDLE)
+            
+            self.bot:setGotoPos(self.targetPlayer:getPos())
+            local distanceToPlayer = self.bot:getPos():getDistance(self.targetPlayer:getPos())
+            
+            if distanceToPlayer < 200 then
+                self.currentTask = enums.tasks.Act
+                self.selectedAct = enums.acts.AttractAttention.value
+                self.bot:removeGotoPos()
+            end
+            
+            
+        elseif self.currentTask == enums.tasks.Act then            
+            if self.selectedAct == enums.acts.AttractAttention.value then
+                self.bot:faceTowards(self.targetPlayer:getPos())
+                if self.parameters.currentNumberToTryAttractAttentionWithFlashlight >= dataParameters.parameters.maxNumberToTryAttractAttentionWithFlashlight and self.progressAct == enums.acts.AttractAttention.progress.waitingPlayer then
+                    self.progressAct = enums.acts.AttractAttention.progress.limitReached
+                    timer.simple(5, function()
+                        if self.selectedAct == enums.acts.AttractAttention.value then
+                            self.currentTask = enums.tasks.End
+                        end
+                    end)
+                end
+                
+                if self.parameters.currentNumberToTryAttractAttentionWithFlashlight <= dataParameters.parameters.maxNumberToTryAttractAttentionWithFlashlight then
+                    self:clickFlashlight()
+                end
+                
+                if self.targetPlayer:getEyeTrace().Entity == self.bot then
+                    self.parameters.currentNumberToTryAttractAttentionWithFlashlight = 0
+                    self.selectedAct = enums.acts.MakeAPhoto.value
+                    self.progressAct = 1
+                end
+            
+            elseif self.selectedAct == enums.acts.MakeAPhoto.value then
+                self.bot:faceTowards(self.targetPlayer:getPos())
+                
+                if self.progressAct == enums.acts.MakeAPhoto.progress.takeCamera then
+                    self.progressAct = enums.acts.MakeAPhoto.progress.waitTakeCamera
+                    hook.add("tick", "MeNextbotTakeCamera", function()
+                        self:takeCamera()
+                        self.bot:setGotoPos(self.bot:getPos() + Vector(0, 0, 1))
+                    end)
+                    timer.simple(0.5, function()
+                        self.progressAct = enums.acts.MakeAPhoto.progress.makePhoto
+                    end)
+                elseif self.progressAct == enums.acts.MakeAPhoto.progress.makePhoto then
+                    self.progressAct = enums.acts.MakeAPhoto.progress.waitMakePhoto
+                    
+                    timer.simple(1, function() 
+                        self:doPhoto()
+                    end)
+                    timer.simple(1.5, function()
+                        hook.remove("tick", "MeNextbotTakeCamera")
+                        self.bot:setRunAct(dataParameters.act.movement.ACT_HL2MP_RUN)
+                        self.bot:setIdleAct(dataParameters.act.stay.ACT_HL2MP_IDLE)
+                        self.cameraProp:setPos(chip():getPos() - Vector(0, 0, 20))
+                    end)
+                    timer.simple(2.5, function()
+                        self.currentTask = enums.tasks.End
+                        self.progressAct = 1
+                    end)
+                end
+            end
+            
+            
+        elseif self.currentTask == enums.tasks.End then 
+            if game.isSinglePlayer() then
+                self.bot:setGotoPos(chip():getPos()) // Del // if want to check on local server
+                local distanceToChip = self.bot:getPos():getDistance(chip():getPos())
+                if distanceToChip < 50 then
+                    self.bot:removeGotoPos()
+                    self.currentTask = enums.tasks.FindPlayer
+                end
+            else
+                self.currentTask = enums.tasks.FindPlayer
+            end
+        end
+    end)
+end
+
+function MeNextbot:selectTargetPlayer()
+    self.targetPlayer = table.random( find.allPlayers() )
+    
+    self.selectedAct = enums.acts.AttractAttention.value
+    self.progressAct = 1
+    
+    self.cooldowns = {
+        attractWithSoundFlashlight = 0
+    }
+    
+    self.parameters = {
+        currentNumberToTryAttractAttentionWithFlashlight = 0
+    }
+end
+
+function MeNextbot:clickFlashlight()
+    if self.cooldowns.attractWithSoundFlashlight <= 0 then
+        self.bot:emitSound(dataParameters.sounds.flashlight1)
+        self.cooldowns.attractWithSoundFlashlight = math.random(dataParameters.cooldowns.minAttractWithSoundFlashlight, dataParameters.cooldowns.maxAttractWithSoundFlashlight)
+        self.parameters.currentNumberToTryAttractAttentionWithFlashlight = self.parameters.currentNumberToTryAttractAttentionWithFlashlight + 1
+    end
+    self.cooldowns.attractWithSoundFlashlight = self.cooldowns.attractWithSoundFlashlight - 1
+end
+
+function MeNextbot:takeCamera()
+    self.bot:setRunAct(dataParameters.act.stay.ACT_HL2MP_IDLE_CAMERA)
+    self.bot:setIdleAct(dataParameters.act.stay.ACT_HL2MP_IDLE_CAMERA)
+    self.cameraProp:setPos((self.bot:getBonePosition(self.boneRightHand) + self.bot:getBonePosition(self.boneLeftHand)) / 2)
+    self.cameraProp:setAngles(self.bot:getAngles())
+    
+    // In this function you need to create a light.create and with timer.simple remove it to make a light effect
+end
+
+function MeNextbot:doPhoto()
+    self.bot:emitSound(dataParameters.sounds.scanner_photo1)
+    
+end
+
+
+if CLIENT then
+
+elseif SERVER then
+    local bot = nil
+    
+    if not hasPermission("nextbot.create") then
+        setupPermissionRequest({"nextbot.create"}, "Create nextbot", true)
+    else
+        bot = MeNextbot:new()
+        timer.simple(1, function()
+            bot:think()
+        end)
+    end
+    
+     hook.add("permissionrequest", "permission", function()
+        if hasPermission("nextbot.create") then
+            bot = MeNextbot:new()
+            timer.simple(1, function()
+                bot:think()
+            end)
+        end
+    end)   
+end

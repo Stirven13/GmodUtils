@@ -1,0 +1,25 @@
+--@name prop.SENT_Data_Structures
+--@author NepNep | discord: stirven
+--@server
+
+
+/*
+> gmod_wire_button
+string description = ""
+boolean entityout = false
+string Model = "models/props_c17/clock01.mdl"
+boolean toggle = false
+number value_off = 0
+number value_on = 1
+*/
+
+buttonData = {
+    description = "",
+    entityout = false,
+    Model = "models/cheeze/buttons2/0.mdl",
+    toggle = false,
+    value_off = 0,
+    value_on = 1,
+}
+
+button = prop.createSent(chip():getPos(), Angle(), "gmod_wire_button", true, buttonData)

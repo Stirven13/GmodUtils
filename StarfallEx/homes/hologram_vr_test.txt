@@ -1,0 +1,30 @@
+--@name VR Test
+--@author NepNep | discord: stirven
+--@shared
+
+if CLIENT then
+    if player() != owner() then return end
+    enableHud(owner(), true)
+    
+    local backgroundHolo = hologram.create(owner():getEyePos(), Angle(), "models/hunter/misc/shell2x2.mdl", Vector(10, 10, 10))
+    backgroundHolo:setMaterial("debug/debugportals")
+    backgroundHolo:setColor(Color(255, 255, 255, 255))
+    backgroundHolo:setNoDraw(true)
+    
+    local floor = hologram.create(owner():getPos(), Angle(), "models/hunter/plates/plate32x32.mdl", Vector(20, 20, 1))
+    floor:setMaterial("sprops/sprops_grid_12x12")
+    floor:setNoDraw(true)
+    
+    hook.add("tick", "SetPosHolograms", function()
+        backgroundHolo:setPos(owner():getEyePos())
+    end)
+    
+    hook.add("postdrawopaquerenderables", "", function(depth, skybox)
+        backgroundHolo:draw()      
+        floor:draw()
+    end)
+    
+    
+elseif SERVER then
+
+end

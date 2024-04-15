@@ -1,0 +1,234 @@
+--@name Advanced Auto Heal
+--@author NepNep | discord: stirven
+--@shared
+
+if CLIENT then
+    if player() ~= owner() then return end
+    enableHud(nil, true)
+    
+    local startEcoMode = nil
+    local healthKitValue, batteryValue = nil, nil
+    local maxPlayerHealth, maxPlayerArmor = nil, nil
+    local countNeedHealthKit, countNeedBattery = nil, nil
+    
+    local countPropsHealthKits, countPropsBattery = nil, nil
+    
+    net.receive("SyncParameters", function()
+        startEcoMode = net.readFloat(32)
+        healthKitValue = net.readInt(16)
+        batteryValue = net.readInt(16)
+        maxPlayerHealth = net.readInt(16)
+        maxPlayerArmor = net.readInt(16)
+        countNeedHealthKit = net.readInt(16)
+        countNeedBattery = net.readInt(16)
+    end)
+    
+    net.receive("SendCountMedicaments", function()
+        if startEcoMode == nil then return end
+        countPropsHealthKits = net.readInt(16)
+        countPropsBattery = net.readInt(16)
+    end)
+    
+    local font = render.createFont(render.getDefaultFont(), 17)
+    render.setFont(font)
+    local x,y = render.getGameResolution()
+    
+    local colors = {
+        health = Color(230, 44, 54),
+        armor = Color(0, 218, 239),
+        outline = Color(17, 17, 17),
+        background = Color(247, 236, 225)
+    }
+    
+    local rigthPath = x * 0.75
+    local width = x * 0.05
+    
+    local calculateRender = {
+        healthOutline = {
+            r = 3,
+            x = x * 0.95 - 5,
+            y = 70,
+            w = x * 0.05,
+            h = 13
+        },
+        healthLine = {
+            r = 1,
+            x = x * 0.95 - 4,
+            y = 71,
+            w = x * 0.05 - 2,
+            h = 11
+        },
+        armorOutline = {
+            r = 3,
+            x = x * 0.95 - 5,
+            y = 85,
+            w = x * 0.05,
+            h = 13
+        },
+        armorLine = {
+            r = 1,
+            x = x * 0.95 - 4,
+            y = 86,
+            w = x * 0.05 - 2,
+            h = 11
+        },
+        healthTextPos = {
+            x = x * 0.95 - 10,
+            y = 68
+        },
+        armorTextPos = {
+            x = x * 0.95 - 10,
+            y = 84
+        }
+    }
+    
+    local function getCustomText(currentCount, needCount)
+        if currentCount == needCount then
+            return string.format("[MAX] %d / %d", currentCount, needCount)
+        elseif currentCount / needCount <= startEcoMode then
+            return string.format("[ECO] %d / %d", currentCount, needCount)
+        end
+        return string.format("%d / %d", currentCount, needCount)
+    end
+    
+    hook.add("postdrawhud", "Draw Info On Hook", function()
+        if countPropsHealthKits == nil then return end
+        local healthLineWidthPercent = countPropsHealthKits / countNeedHealthKit
+        local armorLineWidthPercent = countPropsBattery / countNeedBattery
+        
+        --[[
+        render.setColor(colors.health)
+        render.drawText(x, 5, tostring(countPropsHealthKits), 2)
+        render.setColor(colors.armor)
+        render.drawText(x, 20, tostring(countPropsBattery), 2)
+        ]]
+        
+        render.setColor(colors.outline)
+        render.drawRoundedBox(calculateRender.healthOutline.r, calculateRender.healthOutline.x, calculateRender.healthOutline.y, calculateRender.healthOutline.w, calculateRender.healthOutline.h)
+        render.setColor(colors.background)
+        render.drawText(calculateRender.healthTextPos.x, calculateRender.healthTextPos.y, getCustomText(countPropsHealthKits, countNeedHealthKit), 2)
+        render.drawRoundedBox(calculateRender.healthLine.r, calculateRender.healthLine.x, calculateRender.healthLine.y, calculateRender.healthLine.w, calculateRender.healthLine.h)
+        render.setColor(colors.health)
+        render.drawRoundedBox(calculateRender.healthLine.r, calculateRender.healthLine.x, calculateRender.healthLine.y, calculateRender.healthLine.w * healthLineWidthPercent, calculateRender.healthLine.h)
+        
+        render.setColor(colors.outline)
+        render.drawRoundedBox(calculateRender.armorOutline.r, calculateRender.armorOutline.x, calculateRender.armorOutline.y, calculateRender.armorOutline.w, calculateRender.armorOutline.h)
+        render.setColor(colors.background)
+        render.drawText(calculateRender.armorTextPos.x, calculateRender.armorTextPos.y, getCustomText(countPropsBattery, countNeedBattery), 2)
+        render.drawRoundedBox(calculateRender.armorLine.r, calculateRender.armorLine.x, calculateRender.armorLine.y, calculateRender.armorLine.w, calculateRender.armorLine.h)
+        render.setColor(colors.armor)
+        render.drawRoundedBox(calculateRender.armorLine.r, calculateRender.armorLine.x, calculateRender.armorLine.y, calculateRender.armorLine.w * armorLineWidthPercent, calculateRender.armorLine.h)
+    end)
+    
+elseif SERVER then
+    local healingColdown = 2.5 // In Seconds
+    local startEcoMode = 0.75 // Set parameter in 
+    local healthKitValue, batteryValue = 20, 15
+    
+    local localPlayer = owner()
+    local maxPlayerHealth, maxPlayerArmor = localPlayer:getMaxHealth(), localPlayer:getMaxArmor()
+    
+    local isHealNow = false
+    local propsHealthKits, propsBattery = {}, {}
+    local countNeedHealthKit, countNeedBattery = math.ceil(maxPlayerHealth * 1.5 / healthKitValue), math.ceil(maxPlayerArmor * 3 / batteryValue)
+    
+    timer.simple(1, function()
+        net.start("SyncParameters")
+        net.writeFloat(startEcoMode, 32)
+        net.writeInt(healthKitValue, 16)
+        net.writeInt(batteryValue, 16)
+        net.writeInt(maxPlayerHealth, 16)
+        net.writeInt(maxPlayerArmor, 16)
+        net.writeInt(countNeedHealthKit, 16)
+        net.writeInt(countNeedBattery, 16)
+        net.send()
+    end)
+    
+    local function sendCoundMedicaments()
+        net.start("SendCountMedicaments")
+        net.writeInt(table.count(propsHealthKits), 16)
+        net.writeInt(table.count(propsBattery), 16)
+        net.send()
+    end
+    
+    local function spawnHealComponents()
+        if table.count(propsHealthKits) == countNeedHealthKit and table.count(propsBattery) == countNeedBattery then
+            timer.simple(healingColdown, spawnHealComponents)
+            return
+        end
+        
+        if table.count(propsHealthKits) / countNeedHealthKit < table.count(propsBattery) / countNeedBattery then
+            propHealthKit = prop.createSent(chip():getPos() - Vector(0, 0, 50), Angle(), "item_healthkit", true)
+            // print(table.count(propsHealthKits), " \t", table.count(propsBattery), " \tspawn item_healthkit")
+            propHealthKit:setColor(Color(0, 0, 0, 0))
+            table.insert(propsHealthKits, propHealthKit)
+            sendCoundMedicaments()
+        else
+            propBattery = prop.createSent(chip():getPos() - Vector(0, 0, 50), Angle(), "item_battery", true)
+            // print(table.count(propsHealthKits), " \t", table.count(propsBattery), " \tspawn item_battery")
+            propBattery:setColor(Color(0, 0, 0, 0))
+            table.insert(propsBattery, propBattery)
+            sendCoundMedicaments()
+        end
+        
+        timer.simple(healingColdown, spawnHealComponents)
+    end
+    
+    spawnHealComponents()
+    
+    local function doHealing()
+        local localPlayerPos = localPlayer:getPos()
+        local playerHealth, playerArmor = localPlayer:getHealth(), localPlayer:getArmor()
+        
+        if playerHealth == maxPlayerHealth and playerArmor == maxPlayerArmor then
+            isHealNow = false
+            return
+        elseif playerHealth <= 0 then
+            isHealNow = false
+            return
+        end
+        
+        if playerHealth < maxPlayerHealth and not table.isEmpty(propsHealthKits) then
+            if table.count(propsHealthKits) / countNeedHealthKit <= startEcoMode then
+                if maxPlayerHealth - playerHealth > healthKitValue then return end
+            end
+            propHealthKit = propsHealthKits[table.count(propsHealthKits)]
+            if isValid(propHealthKit) then
+                propHealthKit:setPos(localPlayerPos)
+            end
+            table.remove(propsHealthKits, table.count(propsHealthKits))
+            sendCoundMedicaments()
+        end
+        if playerArmor < maxPlayerArmor and not table.isEmpty(propsBattery) then
+            if table.count(propsBattery) / countNeedBattery <= startEcoMode then
+                if maxPlayerArmor - playerArmor < batteryValue then return end
+            end
+            propBattery = propsBattery[table.count(propsBattery)]
+            if isValid(propBattery) then
+                propBattery:setPos(localPlayerPos)
+            end
+            table.remove(propsBattery, table.count(propsBattery))
+            sendCoundMedicaments()
+        end
+    end
+    
+    function doStartHealing()
+        hook.add("tick", "HealingAnOwner", function()
+            if not isHealNow then
+                hook.remove("tick", "HealingAnOwner")
+                return
+            end
+            doHealing()
+        end)
+    end
+    
+    hook.add("PlayerHurt", "CheckOfDamage", function(ply, attacker, newHealth, damageTaken)
+        if ply ~= owner() then return end
+        if isHealNow then return end
+        isHealNow = true
+        doStartHealing()
+    end)
+    
+    isHealNow = true
+    doStartHealing()
+end

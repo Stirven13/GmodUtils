@@ -1,0 +1,24 @@
+--@name ClassExample
+--@author NepNep | discord: stirven
+--@shared
+
+
+local ClassExample = class("ClassExample")
+
+function ClassExample:initialize()  -- init class
+    self.number = 1
+end
+
+function ClassExample:addNum(value) -- func
+    self.number = self.number + value
+end
+
+function ClassExample:printNum() -- func
+    print(self.number)
+end
+
+local classExample = ClassExample:new() -- create a value of class
+classExample:printNum() -- 1
+classExample:addNum(2) -- 1 + 2 = 3
+classExample:printNum() -- 3
+print(classExample.number) -- 3

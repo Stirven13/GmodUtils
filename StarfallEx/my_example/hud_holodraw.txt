@@ -1,0 +1,35 @@
+--@name HUD Holodraw Example
+--@author Name
+--@client
+
+render.createRenderTarget("canvas")
+
+hook.add("drawhud", "drawstuff", function()
+    render.selectRenderTarget("canvas")
+        render.clear(Color(0,0,0,0), true)
+        render.setColor(Color(0,255,255))
+        render.drawRectOutline(0, 0, 1024, 1024, 8)
+        
+        render.pushViewMatrix({
+            type   = "3D",
+            origin = chip():getPos() + Vector(-30, 0, 40),
+            angles = Angle(),
+            fov    = 60,
+            aspect = 1,
+        })
+        
+        local t = timer.curtime()
+        render.setColor(Color(t * 50 % 360, 1, 1):hsvToRGB())
+        render.draw3DBox(chip():getPos() + Vector(0, 0, 40), Angle(t * 20, t * 30, t * 15), Vector(-6), Vector(6))
+        
+        render.popViewMatrix()
+    render.selectRenderTarget()
+    
+    render.setColor(Color(255,255,255))
+    render.setRenderTargetTexture("canvas")
+    render.drawTexturedRect(256, 256, 512, 512)
+end)
+
+if player() == owner() then
+    enableHud(nil, true)
+end

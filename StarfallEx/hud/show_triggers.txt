@@ -1,0 +1,104 @@
+--@name DetectTriggers
+--@author NepNep | discord: stirven
+--@shared
+
+if player() != owner() then return end
+
+TRIGGER_COLOR = Color(0, 255, 255, 128)
+
+local TriggerEntity = class("TriggerEntity")
+
+function TriggerEntity:initialize(pos, angle, bounds)
+    self.pos = pos
+    self.angle = angle
+    self.bounds = bounds
+end
+
+function TriggerEntity:toTable()
+    return {
+        pos = self.pos,
+        angle = self.angle,
+        bounds = self.bounds
+    }
+end
+
+function TriggerEntity:fromTable(tbl)
+    local triggerEntity = TriggerEntity:new(tbl.pos, tbl.angle, tbl.bounds)
+    return triggerEntity
+end
+
+function TriggerEntity:isLineTrace(startPoint, endPoint)
+    local vectorHit, vectorNormal, hit = trace.intersectRayWithOBB(
+        startPoint, endPoint,
+        self.pos, self.angle, self.bounds[1], self.bounds[2]
+    )
+    
+    return vectorHit ~= nil
+end
+
+function TriggerEntity:drawBox()
+    -- render.draw3DBox(Vector origin, Angle angle, Vector mins, Vector maxs)
+    -- render.draw3DWireframeBox(Vector origin, Angle angle, Vector mins, Vector maxs)
+    render.draw3DWireframeBox(self.pos, self.angle, self.bounds[1], self.bounds[2])
+end
+
+function TriggerEntity:drawRect()
+    local posOnScreen = self.pos:toScreen()
+    render.drawRectFast(posOnScreen.x, posOnScreen.y, 5, 5)
+end
+
+
+if CLIENT then
+    enableHud(owner(), true)
+    
+    local triggers = {}
+    
+    net.receive("GetTriggers", function()
+        local countTrigger = net.readInt(16)
+        for i = 1, countTrigger do
+            local trigger = TriggerEntity:fromTable(net.readTable())
+            table.insert(triggers, trigger)
+        end
+        print("Count triggers: ", countTrigger)
+    end)
+    
+    hook.add("postdrawopaquerenderables", "DrawTriggers", function(depth, skybox)
+        if table.isEmpty(triggers) then return end
+        render.setColor(TRIGGER_COLOR)
+        
+        for i, trigger in ipairs(triggers) do
+            trigger:drawBox()
+        end
+    end)
+    
+    
+    hook.add("postdrawhud", "DrawTriggers", function()
+        if table.isEmpty(triggers) then return end
+        render.setColor(TRIGGER_COLOR)
+        
+        for i, trigger in ipairs(triggers) do
+            trigger:drawRect()
+        end
+    end)
+    
+    
+elseif SERVER then
+    local triggers = {}
+    
+    for i, trigger in ipairs(find.byClass("trigger*")) do
+        local modelBounds1, modelBounds2 = trigger:getModelBounds() 
+        local triggerClass = TriggerEntity:new( trigger:getPos(), trigger:getAngles(), {modelBounds1, modelBounds2} )
+        table.insert(triggers, triggerClass)
+    end
+    
+    local function sendTriggers()
+        net.start("GetTriggers")
+        net.writeInt(table.count(triggers), 16)
+        for i, trigger in ipairs(triggers) do
+            net.writeTable(trigger:toTable())
+        end
+        net.send()
+    end
+    
+    timer.simple(1, sendTriggers)    
+end

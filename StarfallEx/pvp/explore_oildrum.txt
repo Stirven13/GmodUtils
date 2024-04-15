@@ -1,0 +1,23 @@
+--@name Explore Oildrum
+--@author NepNep | discord: stirven
+--@server
+
+local explosivedProps = {}
+
+hook.add("OnEntityCreated", "", function(ent)
+    if not isValid(ent) then return end
+    if ent:getOwner() ~= owner() then return end
+    if ent:getModel() ~= "models/props_c17/oildrum001_explosive.mdl" then return end
+    
+    pcall(function()
+        ent:applyDamage(ent:getMaxHealth())
+    end)
+    
+    pcall(function()
+        timer.simple(0.1, function()
+            ent:setHealth(1)
+        end)
+        ent:ignite(1, 1)
+    end)
+    
+end)

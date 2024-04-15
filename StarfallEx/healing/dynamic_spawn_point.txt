@@ -1,0 +1,58 @@
+--@name Dynamic Spawn Point
+--@author NepNep | discord: stirven
+--@server
+
+local isSpawnActive = false
+
+propSpawn = prop.createSent(chip():getPos(), Angle(), "sent_spawnpoint", true)
+propSpawn:setMaxHealth(100000)
+propSpawn:setHealth(100000)
+
+local sizeA, sizeB = propSpawn:getModelBounds()
+propSpawnSize = sizeB - sizeA
+sizeA, sizeB = nil, nil
+
+
+local playerDeathInfo = {}
+
+hook.add("PlayerDeath", "DetectPlayerDeath", function(ply, inflictor, attacker)
+    if ply ~= owner() then return end
+    if not isSpawnActive then return end
+    propSpawn:setPos(ply:getPos() - Vector(0, 0, propSpawnSize.z / 2))
+    playerDeathInfo = {
+        position = ply:getPos(),
+        eyeAngle = ply:getAimVector():getAngle()
+    }
+end)
+
+hook.add("PlayerUse", "DetectPlayerUse", function(ply, ent)
+    if ply ~= owner() then return end
+    if ent ~= propSpawn then return end
+      
+    if isSpawnActive then
+        isSpawnActive = false
+        propSpawn:setColor(Color(0, 0, 0, 255))
+        propSpawn:setAngles(Angle(0, 0, 0))
+        propSpawn:setPos(chip():getPos())
+    else
+        isSpawnActive = true
+        propSpawn:setColor(Color(0, 0, 0, 0))
+        propSpawn:setAngles(Angle(180, 0, 0))
+        propSpawn:setPos(chip():getPos() - Vector(0, 0, propSpawnSize.z / 2))
+    end
+end)
+
+hook.add("PlayerSpawn", "DetectPlayerSpawn", function(ply)
+    propSpawn:setHealth(100000)
+    if ply ~= owner() then return end
+    
+    if not isSpawnActive then return end
+    --[[
+    timer.simple(1, function()
+        propSpawn:setPos(chip():getPos() - Vector(0, 0, propSpawnSize.z / 2))
+    end)
+    ]]
+    
+end)
+
+// PlayerSwitchWeapon(Player ply, Weapon oldwep, Weapon newweapon)

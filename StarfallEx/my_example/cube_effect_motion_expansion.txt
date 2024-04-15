@@ -1,0 +1,41 @@
+--@name Cube Effect Motion Expansion
+--@author NepNep | discord: stirven
+--@shared
+
+
+if SERVER then  
+    
+    local height_of_relative_pos = 40
+    local cube_size = 3
+    local cubes = {}
+    local original_vector_of_cubes = {}
+    local position_of_cubes = {}
+    
+    for x = -1, 1 do
+        for y = -1, 1 do
+            for z = -1, 1 do
+                hologram_cube_pos = Vector(x * cube_size * 2, y * cube_size * 2, z * cube_size * 2)
+                hologram_cube = hologram.create(chip():getPos() + hologram_cube_pos + Vector(0, 0, height_of_relative_pos), Angle(0, 0, 0), "models/starfall/holograms/box.mdl", Vector(cube_size))
+                
+                table.insert(cubes, hologram_cube)
+                table.insert(original_vector_of_cubes,hologram_cube_pos)
+                table.insert(position_of_cubes, hologram_cube_pos)
+            end
+        end
+    end
+    
+    temp_cube_size_with_plus_one = null
+    
+    local current_time = timer.curtime()
+        
+    hook.add("think", "CubeAnimation", function()
+        for index = 1, #cubes do
+            cubes[index]:setAngles(Angle(0, timer.curtime() * 360, 0))
+            
+            position_of_cubes[index] = original_vector_of_cubes[index] * ( math.abs(math.cos(timer.curtime())) + 0.5 )
+            position_of_cubes[index]:rotate(Angle(0, timer.curtime() * 360, 0))
+            
+            cubes[index]:setPos(chip():getPos() + Vector(0, 0, height_of_relative_pos) + position_of_cubes[index])
+        end
+    end)
+end

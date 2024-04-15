@@ -1,0 +1,151 @@
+--@name HoloGhost
+--@author NepNep | discord: stirven
+--@shared
+
+local HAND_WEAPON = "swep_slap"
+
+local HoloPlayer = class("HoloPlayer")
+
+function HoloPlayer:initialize(ply)
+    self.ply = ply
+    self.pos = ply:getPos()
+    self.model = ply:getModel()
+    
+    self.size = Vector(ply:getModelScale())
+    self.modelBoundsMin, self.modelBoundsMax = Vector(-13, -13, 0), Vector(13, 13, 72)
+    
+    self.angle = ply:getEyeAngles() * Angle(0, 1, 0)
+    self.eyeAngle = ply:getEyeAngles()
+    
+    self.holo = hologram.create(self.pos, self.angle, self.model, self.size)
+    self.holo:setAnimation(ply:getSequence())
+    
+    self.holo:setFlexScale(ply:getFlexScale())
+    self:getFlexesFromClient()
+end
+
+function HoloPlayer:isSeeOnHolo(ply)
+    local playerEyePos = ply:getEyePos()
+    local playerEyeAngles = ply:getEyeAngles()
+    
+    local rayStart = playerEyePos
+    local rayEnd = playerEyePos + playerEyeAngles:getForward() * 1000
+                    
+    local traceHit, traceNormal, traceHitFraction = trace.intersectRayWithOBB(rayStart, rayEnd, self.pos, self.angle, self.modelBoundsMin, self.modelBoundsMax)
+    
+    if traceHit ~= nil then
+        return true
+    end
+    
+    return false
+end
+
+function HoloPlayer:getFlexesFromClient()
+    net.start("GetClientFlexes")
+    net.writeEntity(self.holo)
+    net.writeEntity(self.ply)
+    net.send()
+end
+
+/*
+function HoloPlayer:drawBox()
+    render.draw3DWireframeBox(self.pos, self.angle, self.bounds[1], self.bounds[2])
+end*/
+
+function HoloPlayer:remove()
+    self.holo:remove()
+end
+
+
+if SERVER then
+    local allHolograms = {}
+    
+    hook.add("PlayerSay", "CheckPlayerSay", function(ply, text, teamChat)
+        if ply != owner() then return end
+        
+        local textLower = string.lower(text)
+        
+        if table.hasValue({"!cloneme"}, textLower) then
+            local clone = HoloPlayer:new(ply)
+            table.insert(allHolograms, clone)
+            
+            
+        elseif table.hasValue({"!cloneit"}, textLower) then
+            local tracedEntity = owner():getEyeTrace()
+            if not tracedEntity.Entity:isPlayer() then return end
+            
+            local clone = HoloPlayer:new(tracedEntity.Entity)
+            table.insert(allHolograms, clone)
+            
+            
+        elseif table.hasValue({"!clonedel"}, textLower) then
+            for i, clone in ipairs(allHolograms) do
+                if not clone:isSeeOnHolo(ply) then continue end
+                clone:remove()
+                table.removeByValue(allHolograms, clone)
+            end
+        end
+    end)
+    
+    hook.add("KeyPress", "DetectKey", function(ply, key)
+        if not isValid(ply) then return end
+        if not ply:isAlive() then return end
+        if ply ~= owner() then return end
+        if ply:getActiveWeapon():getClass() ~= HAND_WEAPON then return end
+        
+        if key == IN_KEY.ATTACK2 then
+            local clone = HoloPlayer:new(ply)
+            table.insert(allHolograms, clone)
+        elseif key == IN_KEY.RELOAD then
+            for i, clone in ipairs(allHolograms) do
+                if not clone:isSeeOnHolo(ply) then continue end
+                clone:remove()
+                table.removeByValue(allHolograms, clone)
+            end
+        end
+    end)
+    
+    net.receive("SetEntityFlexes", function()
+        local ent = net.readEntity()
+        local plyFlexes = net.readTable()
+        
+        for flex_id, flex_value in pairs(plyFlexes) do
+            ent:setFlexWeight(flex_id, flex_value)
+        end
+    end)
+elseif CLIENT then
+    if player() ~= owner() then return end
+    
+    function getActiveFlexes(ply)
+        if ply == owner() and not convar.getBool("simple_thirdperson_enabled") then
+            return {}
+        end
+        
+        local all_flexes = ply:getFlexes()
+        local needed_flexes = {}
+        
+        for flex_name, flex_id in pairs(all_flexes) do
+            flex_value = ply:getFlexWeight(flex_id)
+            if flex_value == 0 then continue end
+            needed_flexes[flex_id] = flex_value
+        end
+        
+        return needed_flexes
+    end
+    
+    net.receive("GetClientFlexes", function()
+        
+        local ent = net.readEntity()
+        local ply = net.readEntity()
+        
+        if not isValid(ent) then return end
+        if not isValid(ply) then return end
+        
+        local plyFlexes = getActiveFlexes(ply)
+        
+        net.start("SetEntityFlexes")
+        net.writeEntity(ent)
+        net.writeTable(plyFlexes)
+        net.send()
+    end)
+end

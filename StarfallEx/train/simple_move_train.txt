@@ -1,0 +1,148 @@
+--@name Simple Move Train
+--@author NepNep | discord: stirven
+--@shared
+
+if CLIENT then
+    if player() != owner() then return end
+
+    local trailString = file.read("norm_trail.json")
+    
+    timer.simple(2, function()
+        net.start("TrailData Sync")
+        net.writeStream(trailString)
+        net.send()
+    end)
+elseif SERVER then
+    local propFindConfig = {
+        model = "models/hunter/blocks/cube2x6x025.mdl",
+        color = Color(0, 160, 255, 255),
+        material_ = "models/combine_scanner/scanner_eye"
+    }
+    
+    local propAfterFindConfig = {
+        color = Color(255, 255, 255, 255),
+        material_ = nil
+    }
+    
+    local function filterToFindTrail(ent)
+        if ent:getOwner() != owner() then 
+            return false 
+        end
+        
+        if ent:getModel() == propFindConfig.model and ent:getColor() == propFindConfig.color and ent:getMaterial() == propFindConfig.material_ then
+            return true
+        end
+        
+        return false
+    end
+    
+    local allegedTrains = find.all(filterToFindTrail)
+    local train = allegedTrains[table.count(allegedTrains)]
+    train:setCollisionGroup(COLLISION_GROUP.WORLD)
+    
+    local trailData = nil
+    local countTrailPoints = nil
+    
+    local function findIndexOfNearestPoint(point)
+        local bestIndex = 1
+        local bestDistanceSqr = point:getDistanceSqr(trailData[1].vector)
+        
+        for index, trailPointData in ipairs(trailData) do
+            local currentDistance = point:getDistanceSqr(trailPointData.vector)
+            
+            if currentDistance < bestDistanceSqr then
+                bestIndex = index
+                bestDistanceSqr = currentDistance
+            end
+        end
+        
+        return bestIndex
+    end
+    
+    local corectionAngle = Angle(0, -90, 0)
+    local currentIndexOnTrail = nil
+    
+    local function convertTrail(trailString)
+        trailData = json.decode(trailString)
+        countTrailPoints = table.count(trailData)
+        print("Count points in trail: " .. countTrailPoints)
+        print("Train is ready!")
+        
+        currentIndexOnTrail = findIndexOfNearestPoint(train:getPos())
+    end
+    
+    net.receive("TrailData Sync", function()
+        local trailString = net.readStream(convertTrail)
+    end)
+    
+    local function findIndexOfNearestPoint(point)
+        local bestIndex = 1
+        local bestDistanceSqr = point:getDistanceSqr(trailData[1].vector)
+        
+        for index, trailPointData in ipairs(trailData) do
+            local currentDistance = point:getDistanceSqr(trailPointData.vector)
+            
+            if currentDistance < bestDistanceSqr then
+                bestIndex = index
+                bestDistanceSqr = currentDistance
+            end
+        end
+        
+        return bestIndex
+    end
+    
+    local trainSpeed = 0
+    
+    hook.add("tick", "SetPositionForTrain", function()
+        if train == nil then return end
+        if currentIndexOnTrail == nil then return end
+     
+        local currentIndex = math.floor(currentIndexOnTrail)
+    
+        if currentIndex <= 0 then
+            currentIndex = currentIndex + countTrailPoints
+        end
+        if currentIndex > countTrailPoints then
+            currentIndex = currentIndex % countTrailPoints
+        end
+    
+        local nextIndex = currentIndex + 1
+        if nextIndex > countTrailPoints then
+            nextIndex = 1
+        end
+        
+        local pointTrail = trailData[currentIndex]
+        local physTrain = train:getPhysicsObject()
+        
+        if physTrain:isAsleep() then physTrain:wake() end
+        
+        physTrain:setPos(pointTrail.vector)
+        physTrain:setAngles(pointTrail.angle + corectionAngle)
+    end)
+    
+    hook.add("tick", "MoveTrain", function()
+        if train == nil then return end
+        if currentIndexOnTrail == nil then return end
+    
+        currentIndexOnTrail = currentIndexOnTrail + trainSpeed
+    
+        if currentIndexOnTrail <= 0 then
+            currentIndexOnTrail = currentIndexOnTrail + countTrailPoints
+        end
+        if currentIndexOnTrail > countTrailPoints then
+            currentIndexOnTrail = currentIndexOnTrail - countTrailPoints
+        end
+    end)
+    
+    local speedCommand = "!trainspeed"
+    
+    local available_player_steamid = { owner():getSteamID(), "STEAM_0:1:128208709", "STEAM_0:0:165669742", "STEAM_0:1:539804845" }
+    
+    hook.add("PlayerSay", "ChangeParameters", function(ply, text, teamChat)
+        if not table.hasValue(available_player_steamid, ply:getSteamID()) then return end
+        if not string.startWith(text, speedCommand) then return end
+        
+        local newSpeed = tonumber(text:sub(string.len(speedCommand) + 1))
+        trainSpeed = newSpeed
+    end)
+end

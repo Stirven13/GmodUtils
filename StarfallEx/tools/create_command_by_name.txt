@@ -1,0 +1,19 @@
+--@name CreateCommandByName
+--@author NepNep | discord: stirven
+--@server
+
+function extractFirstEnglishWord(inputText)
+    local nickWithoutTag, replacementCount = string.gsub(inputText, "<[^>]*>", "")
+    local firstWord = nickWithoutTag:match("%a+")
+    return firstWord
+end
+
+
+for i, v in ipairs(find.allPlayers()) do
+    local nick, _ = string.gsub(v:getName(), "<[^>]*>", "")
+    local firstNameNick = extractFirstEnglishWord(v:getName())
+    
+    if firstNameNick == nil then continue end
+    
+    print(nick .. ":     " .. firstNameNick)
+end

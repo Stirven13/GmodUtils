@@ -1,0 +1,59 @@
+--@name FindFloorPos
+--@author NepNep | discord: stirven
+--@server
+
+local mapSizeMin, mapSizeMax = entity(0):getModelBounds()
+print(mapSizeMin)
+print(mapSizeMax)
+
+mapSizeMin.z = 0
+mapSizeMax.z = 500
+
+local epsilon = 0.1
+
+local function traceCorrectPoint(firstPoint, secondPoint)
+    local midPoint = (firstPoint + secondPoint) / 2
+    
+    if firstPoint:getDistance(midPoint) < epsilon then
+        return firstPoint
+    end
+    
+    local firstTraceResult = trace.line(firstPoint, midPoint)
+    if firstTraceResult.Hit then
+        return traceCorrectPoint(firstPoint, midPoint)
+    end
+    
+    local secondTraceResult = trace.line(midPoint, secondPoint)
+    if secondTraceResult.Hit then
+        return traceCorrectPoint(midPoint, secondPoint)
+    end
+    
+    return firstPoint
+end
+
+
+local function findFloor(point)
+    local upPoint = Vector(point.x, point.y, mapSizeMax.z)
+    local downPoint = Vector(point.x, point.y, mapSizeMin.z)
+    
+    local roofTraceResult = trace.line(upPoint, downPoint)
+    if not roofTraceResult.Hit then return nil end
+    
+    local roofPoint = roofTraceResult.HitPos
+    local correctedPoint = traceCorrectPoint(roofPoint, downPoint)
+    
+    return correctedPoint
+end
+
+
+local holoLineFloor = hologram.create(Vector(), Angle(), "models/hunter/blocks/cube1x1x1.mdl", Vector(1, 1, 1))
+
+hook.add("tick", "setPosHolos", function()
+    local floorPoint = findFloor(chip():getPos() + Vector(10, 10, 0))
+    
+    if floorPoint == nil then
+        holoLineFloor:setPos(Vector())
+        return
+    end
+    holoLineFloor:setPos(floorPoint)
+end)

@@ -1,0 +1,168 @@
+--@name Unchangeble Props
+--@author NepNep | discord: stirven
+--@shared
+
+local MyProp = class("MyProp")
+    
+function MyProp:initialize(ent)
+    self.entity = ent
+    self.entIndex = ent:entIndex()
+    
+    self.collision_group = ent:getCollisionGroup()
+    self.model = ent:getModel()
+    
+    self.pos = ent:getPos()
+    self.angle = ent:getAngles()
+    
+    self.color = ent:getColor()
+    self.material = ent:getMaterial()
+end
+
+function MyProp:toTable()
+    return {
+        entity = self.entity,
+        entIndex = self.entIndex,
+        
+        collision_group = self.collision_group,
+        model = self.model,
+        
+        pos = self.pos,
+        angle = self.angle,
+        
+        color = self.color,
+        material = self.material
+    }
+end
+
+function MyProp:isValid()
+    return isValid(self.entity)
+end
+
+function MyProp:isMyProp(ent)
+    return self.entIndex == ent:entIndex()
+end
+
+function MyProp:setNewEntity(ent)
+    self.entity = ent
+    self.entIndex = ent:entIndex()
+    
+    ent:setCollisionGroup(self.collision_group)
+    
+    ent:setPos(self.pos)
+    ent:setAngles(self.angle)
+    
+    ent:setColor(self.color)
+    ent:setMaterial(self.material)
+end
+
+function MyProp:getModel()
+    return self.model
+end
+
+
+if CLIENT then
+    if player() != owner() then return end
+    
+    local spawnQueue = {}
+    
+    net.receive("Insert Prop In SpawnQueue", function()
+        local myPropTable = net.readTable()
+        table.insert(spawnQueue, myPropTable)
+    end)
+    
+    timer.create("Spawn Prop In SpawnQueue", 1, 0, function()
+        if table.isEmpty(spawnQueue) then return end
+        
+        local myPropTable = spawnQueue[1]
+        local myPropModel = myPropTable.model
+        concmd(string.format("gm_spawn %s", myPropModel))
+        // gm_spawnsent
+        
+        table.remove(spawnQueue, 1)
+    end)
+    
+    
+elseif SERVER then
+    local function unFire(ent)
+        if ent:isOnFire() then
+            pcall(function()
+                ent:extinguish()
+            end)
+        end
+    end
+    
+    
+    local function filterMyProp(ent)
+        return ent:getOwner() == owner()
+    end
+    
+    local function getMyProps()
+        local myProps = {}
+        
+        for _, myProp in ipairs(find.all(filterMyProp)) do
+            local myPropClass = MyProp:new(myProp)
+            
+            table.insert(myProps, myPropClass)
+        end
+        
+        return myProps
+    end
+    
+    local myProps = getMyProps()
+    local neededMyPropsIndex = {}
+    local queueSendMyPropsTable = {}
+    
+    hook.add("EntityTakeDamage", "ZeroDamage", function(target, attacker, inflictor, amount, type, position, force)
+        if cpuTotalAverage() >= cpuMax() * 0.8 then return end
+        
+        if not isValid(target) then return end
+        if target:getOwner() != owner() then return end
+        
+        unFire(target)
+        
+        target:setHealth(target:getMaxHealth())
+    end)
+    
+    local function netSendMyPropRemoved(myProp)
+        local myPropTable = myProp:toTable()
+        table.insert(queueSendMyPropsTable, myPropTable)
+    end
+    
+    timer.create("Send Needed MyProps", 1, 0, function()
+        if table.isEmpty(queueSendMyPropsTable) then return end
+        
+        local myPropTable = queueSendMyPropsTable[1]
+        table.remove(queueSendMyPropsTable, 1)
+        
+        net.start("Insert Prop In SpawnQueue")
+        net.writeTable(myPropTable)
+        net.send()
+    end)
+    
+    hook.add("EntityRemoved", "RespawnEntity", function(ent)
+        if not isValid(ent) then return end
+        if ent:getOwner() != owner() then return end
+        
+        for myPropIndex, myProp in ipairs(myProps) do
+            if myProp:isMyProp(ent) then
+                table.insert(neededMyPropsIndex, myPropIndex)
+                netSendMyPropRemoved(myProp)
+                return
+            end
+        end
+    end)
+    
+    hook.add("OnEntityCreated", "FixingRemovedEnt", function(ent)
+        if not isValid(ent) then return end
+        if ent:getOwner() != owner() then return end
+        
+        for i, myPropIndex in ipairs(neededMyPropsIndex) do
+            local neededMyProp = myProps[myPropIndex]
+            if neededMyProp:getModel() != ent:getModel() then continue end
+            ent:setFrozen(true)
+            myProps[myPropIndex]:setNewEntity(ent)
+            table.remove(neededMyPropsIndex, i)
+            return
+        end
+    end)
+end

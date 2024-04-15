@@ -1,0 +1,47 @@
+--@name InfinityGrapple
+--@author NepNep | discord: stirven
+--@shared
+--@model models/hunter/plates/plate.mdl
+
+if CLIENT then
+    if owner() != player() then return end
+    
+elseif SERVER then
+    chip():setColor(Color(255, 0, 0))
+    chip():setMaxHealth(1000000)
+    chip():setHealth(1000000)
+    chip():setNocollideAll(true)
+    
+    local isHooking = false
+    
+    local hidePos = chip():getPos() - Vector(0, 0, 4)
+    
+    local function getOwnerVelocity(addDistance, doMulty)
+        local velocityVec = owner():getVelocity():getLengthSqr()
+        return velocityVec * doMulty + addDistance
+    end
+    
+    hook.add("tick", "SetPosition", function()
+        if owner():getActiveWeapon():getClass() == "weapon_grapplehook" then
+            local playerAimVector = owner():getAimVector()
+            local playerEyePos = owner():getEyePos()
+            chip():setPos(playerAimVector * 100 + playerEyePos - Vector(0, 0, 1.75))
+        else
+            chip():setPos(hidePos)
+        end
+    end)
+    
+    hook.add("KeyPress", "DetectPlayerAttack", function(ply, key)
+        if ply != owner() then return end
+        if ply:getActiveWeapon():getClass() != "weapon_grapplehook" then return end
+        if key != IN_KEY.ATTACK then return end
+        
+        isHooking = true
+    end)
+end
+
+
+
+
+
+

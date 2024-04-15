@@ -1,0 +1,289 @@
+--@name NonEuclidean 4ColorRoom
+--@author NepNep | discord: stirven
+--@server
+
+local EnumsTypes = {
+    SEPARATOR = 0,
+    ROOM1 = 1,  // Red
+    ROOM2 = 2,  // Blue
+    ROOM3 = 3,  // Green
+    ROOM4 = 4,  // Yellow,
+    ADDITIONAL = 5 // BLACK
+}
+
+local neededProps = { 
+    { color = Color(255, 255, 255, 255), model = "models/hunter/blocks/cube025x3x025.mdl", material_ = "", type = EnumsTypes.SEPARATOR},
+    { color = Color(255, 0, 0, 255), model = "models/hunter/plates/plate4x4.mdl", material_ = "", type = EnumsTypes.ROOM1},
+    { color = Color(255, 0, 0, 255), model = "models/hunter/plates/plate3x4.mdl", material_ = "", type = EnumsTypes.ROOM1},
+    { color = Color(0, 0, 255, 255), model = "models/hunter/plates/plate4x4.mdl", material_ = "", type = EnumsTypes.ROOM2},
+    { color = Color(0, 0, 255, 255), model = "models/hunter/plates/plate3x4.mdl", material_ = "", type = EnumsTypes.ROOM2},
+    { color = Color(0, 255, 0, 255), model = "models/hunter/plates/plate4x4.mdl", material_ = "", type = EnumsTypes.ROOM3},
+    { color = Color(0, 255, 0, 255), model = "models/hunter/plates/plate3x4.mdl", material_ = "", type = EnumsTypes.ROOM3},
+    { color = Color(225, 255, 0, 255), model = "models/hunter/plates/plate4x4.mdl", material_ = "", type = EnumsTypes.ROOM4},
+    { color = Color(225, 255, 0, 255), model = "models/hunter/plates/plate3x4.mdl", material_ = "", type = EnumsTypes.ROOM4},
+    { color = Color(0, 0, 0, 255), model = "models/hunter/plates/plate4x4.mdl", material_ = "", type = EnumsTypes.ADDITIONAL },
+    { color = Color(0, 0, 0, 255), model = "models/hunter/plates/plate3x4.mdl", material_ = "", type = EnumsTypes.ADDITIONAL }
+}
+
+local props = {
+    [EnumsTypes.SEPARATOR] = {},
+    [EnumsTypes.ROOM1] = {},
+    [EnumsTypes.ROOM2] = {},
+    [EnumsTypes.ROOM3] = {},
+    [EnumsTypes.ROOM4] = {},
+    [EnumsTypes.ADDITIONAL] = {}
+}
+
+local function addEntityToPropsByType(prop_, type)    
+    // print(prop_, " ", prop_:getModel(), " ", type)
+    // hologram.create(prop_:getPos(), Angle(), "models/starfall/holograms/box.mdl", Vector(5, 5, 5))
+    if props[type] then
+        table.insert(props[type], prop_)
+    else
+        print("Invalid type")
+    end
+end
+
+local colors = {
+    {title = "Aqua", value = Color(0, 255, 255)},
+    {title = "Black", value = Color(0, 0, 0)},
+    {title = "Blue", value = Color(0, 0, 255)},
+    {title = "Fuchsia", value = Color(255, 0, 255)},
+    {title = "Gray", value = Color(128, 128, 128)},
+    {title = "Green", value = Color(0, 128, 0)},
+    {title = "Lime", value = Color(0, 255, 0)},
+    {title = "Maroon", value = Color(128, 0, 0)},
+    {title = "Navy", value = Color(0, 0, 128)},
+    {title = "Olive", value = Color(128, 128, 0)},
+    {title = "Purple", value = Color(128, 0, 128)},
+    {title = "Red", value = Color(255, 0, 0)},
+    {title = "Silver", value = Color(192, 192, 192)},
+    {title = "Teal", value = Color(0, 128, 128)},
+    {title = "White", value = Color(255, 255, 255)},
+    {title = "Yellow", value = Color(255, 255, 0)}
+}
+
+calcParameters = {
+    centreCoords = nil,
+    cubeCoordsCheck = {startPos = nil, endPos = nil},
+    room1 = {stardPos = nil, endPos = nil},
+    room2 = {stardPos = nil, endPos = nil},
+    room3 = {stardPos = nil, endPos = nil},
+    room4 = {stardPos = nil, endPos = nil}
+}
+
+local function getLowSurfaceProp(propsArray, model)
+    // Return lowest prop by array
+    //
+    // propArray: array[Entity]
+    // model: string
+    // return Entity or nil
+    local lowSurface = nil
+    for _, entity in ipairs(propsArray) do
+        if entity:getModel() != model then continue end
+        
+        if lowSurface == nil then
+            lowSurface = entity
+            continue
+        end
+        
+        if lowSurface:getPos().z > entity:getPos().z then
+            lowSurface = entity
+            continue
+        end
+    end
+    return lowSurface
+end
+
+local isPropFind = false
+
+local function doCalculatingParameters()
+    // Calc Separator
+    local currentSep = props[EnumsTypes.SEPARATOR][1]
+    local currentSepSizeA, currentSepSizeB = currentSep:getModelBounds()
+    calcParameters.centreCoords = currentSep:getPos() + Vector(-currentSepSizeA.x / 2, currentSepSizeB.z * -0.5, 0)
+    
+    // Calc Room1
+    local lowestPropRoom1 = getLowSurfaceProp(props[EnumsTypes.ROOM1], "models/hunter/plates/plate4x4.mdl")
+    local sizePlate4x4A, sizePlate4x4B = lowestPropRoom1:getModelBounds()
+    sizePlate4x4A, sizePlate4x4B = sizePlate4x4A, sizePlate4x4B
+    
+    calcParameters.room1.stardPos = lowestPropRoom1:getPos() + sizePlate4x4A * Vector(1, 1, 0)
+    calcParameters.room1.endPos = lowestPropRoom1:getPos() + sizePlate4x4B * Vector(1, 1, 0)
+    
+    // Calc Room2
+    local lowestPropRoom2 = getLowSurfaceProp(props[EnumsTypes.ROOM2], "models/hunter/plates/plate4x4.mdl")
+    calcParameters.room2.stardPos = lowestPropRoom2:getPos() + sizePlate4x4A * Vector(1, 1, 0)
+    calcParameters.room2.endPos = lowestPropRoom2:getPos() + sizePlate4x4B * Vector(1, 1, 0)
+    
+    // Calc Room3
+    local lowestPropRoom3 = getLowSurfaceProp(props[EnumsTypes.ROOM3], "models/hunter/plates/plate4x4.mdl")
+    calcParameters.room3.stardPos = lowestPropRoom3:getPos() + sizePlate4x4A * Vector(1, 1, 0)
+    calcParameters.room3.endPos = lowestPropRoom3:getPos() + sizePlate4x4B * Vector(1, 1, 0)
+    
+    // Calc Room4
+    local lowestPropRoom4 = getLowSurfaceProp(props[EnumsTypes.ROOM4], "models/hunter/plates/plate4x4.mdl")
+    calcParameters.room4.stardPos = lowestPropRoom4:getPos() + sizePlate4x4A * Vector(1, 1, 0)
+    calcParameters.room4.endPos = lowestPropRoom4:getPos() + sizePlate4x4B * Vector(1, 1, 0)
+    
+    local sizeAPlate3x4A = nil
+    for _, ent in ipairs(props[EnumsTypes.ROOM1]) do
+        if ent:getModel() != "models/hunter/plates/plate3x4.mdl" then continue end
+        sizeAPlate3x4A, _ = currentSep:getModelBounds(ent)
+    end
+    
+    // Calc Size Cube
+    calcParameters.cubeCoordsCheck.startPos = lowestPropRoom2:getPos() + sizePlate4x4B * Vector(1, 1, -1)
+    calcParameters.cubeCoordsCheck.endPos = lowestPropRoom4:getPos() + sizePlate4x4A * Vector(1, 1, -3) + Vector(0, 0, -sizeAPlate3x4A.x * 2)
+    
+    print(calcParameters.cubeCoordsCheck.startPos)
+    print(calcParameters.cubeCoordsCheck.endPos)
+    
+    isPropFind = true
+end
+
+
+local currentEntityIndex = 0
+
+local allEntity = {}
+
+local function includeValueFromTable(main_table, temp_table)
+    for _,  ent in ipairs(temp_table) do
+        table.insert(main_table, ent)
+    end
+    return main_table
+end
+
+allEntity = includeValueFromTable(allEntity, find.byModel("models/hunter/blocks/cube025x3x025.mdl"))
+allEntity = includeValueFromTable(allEntity, find.byModel("models/hunter/plates/plate4x4.mdl"))
+allEntity = includeValueFromTable(allEntity, find.byModel("models/hunter/plates/plate3x4.mdl"))
+
+local countAllEntity = table.count(allEntity)
+
+hook.add("tick", "GetAllNeededEntity", function()
+    while true do
+        if currentEntityIndex > countAllEntity then
+            hook.remove("tick", "GetAllNeededEntity")
+            doCalculatingParameters()
+            return
+        end
+        
+        if cpuTotalAverage() > cpuMax() * 0.5 then return end
+        currentEntityIndex = currentEntityIndex + 1
+        ent = allEntity[currentEntityIndex]
+        
+        if not isValid(ent) then continue end
+        if not isValid(ent:getOwner()) then continue end
+        if ent:getOwner() != owner() then continue end
+        
+        entColor = ent:getColor()
+        entModel = ent:getModel()
+        entMaterial = ent:getMaterial()
+        
+        for v, k in ipairs(neededProps) do
+            if k.color != entColor then continue end
+            if k.model != entModel then continue end
+            if k.material_ != entMaterial then continue end
+            
+            addEntityToPropsByType(ent, k.type)
+            break
+        end
+    end
+end)
+
+local function resetTestingRoom()
+    for _, ent in ipairs(props[EnumsTypes.ROOM1]) do ent:setColor(Color(255, 0, 0, 255)) end
+    for _, ent in ipairs(props[EnumsTypes.ROOM2]) do ent:setColor(Color(0, 0, 255, 255)) end
+    for _, ent in ipairs(props[EnumsTypes.ROOM3]) do ent:setColor(Color(0, 255, 0, 255)) end
+    for _, ent in ipairs(props[EnumsTypes.ROOM4]) do ent:setColor(Color(225, 255, 0, 255)) end
+end
+
+local isRoomChange = false
+
+local function isPlayerInsideSquare(playerPos, point1, point2)
+    local minX = math.min(point1.x, point2.x)
+    local maxX = math.max(point1.x, point2.x)
+    
+    local minY = math.min(point1.y, point2.y)
+    local maxY = math.max(point1.y, point2.y)
+        
+    return playerPos.x >= minX and playerPos.x <= maxX and
+           playerPos.y >= minY and playerPos.y <= maxY
+end
+
+local function isPlayerInsideCube(playerPos, point1, point2)
+    local minX = math.min(point1.x, point2.x)
+    local maxX = math.max(point1.x, point2.x)
+    
+    local minY = math.min(point1.y, point2.y)
+    local maxY = math.max(point1.y, point2.y)
+    
+    local minZ = math.min(point1.z, point2.z)
+    local maxZ = math.max(point1.z, point2.z)
+        
+    return playerPos.x >= minX and playerPos.x <= maxX and
+           playerPos.y >= minY and playerPos.y <= maxY and
+           playerPos.z >= minZ and playerPos.z <= maxZ
+end
+
+local function changeRoomColor(typeRoom)
+    local newColor = colors[math.random(1, 16)].value
+    for _, ent in ipairs(props[typeRoom]) do ent:setColor(newColor) end
+end
+
+local function changeRoom(playerPos)
+    if isPlayerInsideSquare(playerPos, calcParameters.room1.stardPos, calcParameters.room1.endPos) then
+        changeRoomColor(EnumsTypes.ROOM3)
+    elseif isPlayerInsideSquare(playerPos, calcParameters.room2.stardPos, calcParameters.room2.endPos) then
+        changeRoomColor(EnumsTypes.ROOM4)
+    elseif isPlayerInsideSquare(playerPos, calcParameters.room3.stardPos, calcParameters.room3.endPos) then
+        changeRoomColor(EnumsTypes.ROOM1)
+    elseif isPlayerInsideSquare(playerPos, calcParameters.room4.stardPos, calcParameters.room4.endPos) then
+        changeRoomColor(EnumsTypes.ROOM2)
+    end
+end
+
+
+local currentPlayer = nil
+/*
+hook.add("tick", "CalcRoom", function()
+    if not isPropFind then return end
+    if not currentPlayer then return end
+    
+    local playerPos = currentPlayer:getPos() * Vector(1, 1, 0)
+    local centreVector = calcParameters.centreCoords * Vector(1, 1, 0)
+    local pointVector = playerPos - centreVector
+    
+    local degree = math.abs(math.deg(math.atan2(pointVector.x, pointVector.y)) % 90)
+    
+    if calcParameters.minNeedDegree < degree and degree < (90 - calcParameters.minNeedDegree) then
+        if not isRoomChange then
+            isRoomChange = true
+            changeRoom(playerPos)
+            // print(calcParameters.minNeedDegree, " ", degree)
+        end
+    else
+        isRoomChange = false
+    end
+end)*/
+
+hook.add("tick", "CheckOfFindCurrentPlayer", function()
+    if not isPropFind then return end
+    
+    if currentPlayer == nil then
+        local allPlayers = find.allPlayers()
+        for _, player in ipairs(allPlayers) do
+            if not isValid(player) then continue end
+            if isPlayerInsideCube(player:getPos(), calcParameters.cubeCoordsCheck.startPos, calcParameters.cubeCoordsCheck.endPos) then
+                currentPlayer = player
+                print("CurrentPlayer inside: ", currentPlayer)
+                break
+            end
+        end
+    else
+        if not isPlayerInsideCube(currentPlayer:getPos(), calcParameters.cubeCoordsCheck.startPos, calcParameters.cubeCoordsCheck.endPos) then
+            resetTestingRoom()
+            currentPlayer = nil
+        end
+    end
+end)

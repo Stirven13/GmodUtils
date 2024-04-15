@@ -1,0 +1,30 @@
+--@name IvBn
+--@author NepNep | discord: stirven
+--@server
+
+local currentBananaId = 0
+local allBananas = find.byClass("sent_banana_peel")
+local countBananas = table.count(allBananas)
+
+hook.add("tick", "BananaInteraction", function()
+    while (true) do
+        if currentBananaId > countBananas then
+            hook.remove("tick", "BananaInteraction")
+            chip():remove()
+        end
+        
+        if cpuTotalAverage() > cpuMax() * 0.9 then return end
+        ent = allBananas[currentBananaId]
+        currentBananaId = currentBananaId + 1
+        
+        if not isValid(ent) then continue end
+        if not isValid(ent:getOwner()) then continue end
+        if ent:getOwner() != owner() then continue end
+        
+        
+        if ent:getModel() == "models/props_farm/scenes/bananana_peel.mdl" then
+            ent:setColor(Color(255,255,255,255))
+            ent:remove()
+        end
+    end
+end)

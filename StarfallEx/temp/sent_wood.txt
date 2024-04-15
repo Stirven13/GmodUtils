@@ -1,0 +1,86 @@
+--@name
+--@author NepNep | discord: stirven
+--@shared
+
+models/props_debris/wood_chunk06a.mdl
+
+1:
+        mdl    =    CSEntity [class C_BaseFlex]
+        rand1    =    -1.3564822330078
+        rand2    =    0.72115959584625
+        rand3    =    -180
+2:
+        mdl    =    CSEntity [class C_BaseFlex]
+        rand1    =    -0.50843229024116
+        rand2    =    1.8512287426958
+        rand3    =    0
+3:
+        mdl    =    CSEntity [class C_BaseFlex]
+        rand1    =    -0.53724156166056
+        rand2    =    0.74435234254423
+        rand3    =    0
+4:
+        mdl    =    CSEntity [class C_BaseFlex]
+        rand1    =    -0.18740637606474
+        rand2    =    -1.7839355637067
+        rand3    =    -180
+5:
+        mdl    =    CSEntity [class C_BaseFlex]
+        rand1    =    3.6164954877467
+        rand2    =    0.92918878325225
+        rand3    =    -180
+6:
+        mdl    =    CSEntity [class C_BaseFlex]
+        rand1    =    1.1271761610113
+        rand2    =    -0.49239654059751
+        rand3    =    0
+7:
+        mdl    =    CSEntity [class C_BaseFlex]
+        rand1    =    -1.4386624518012
+        rand2    =    -1.0072409071119
+        rand3    =    -180
+8:
+        mdl    =    CSEntity [class C_BaseFlex]
+        rand1    =    4.050998677853
+        rand2    =    -0.23971822257351
+        rand3    =    -180
+9:
+        mdl    =    CSEntity [class C_BaseFlex]
+        rand1    =    3.5885837767275
+        rand2    =    -0.97281974159095
+        rand3    =    0
+10:
+        mdl    =    CSEntity [class C_BaseFlex]
+        rand1    =    2.2568574119297
+        rand2    =    -0.079778108897283
+        rand3    =    0
+11:
+        mdl    =    CSEntity [class C_BaseFlex]
+        rand1    =    2.4003004402293
+        rand2    =    0.81986947293753
+        rand3    =    0
+12:
+        mdl    =    CSEntity [class C_BaseFlex]
+        rand1    =    3.437156373862
+        rand2    =    -1.8844694970316
+        rand3    =    -180
+13:
+        mdl    =    CSEntity [class C_BaseFlex]
+        rand1    =    2.677327962936
+        rand2    =    1.231233400847
+        rand3    =    0
+14:
+        mdl    =    CSEntity [class C_BaseFlex]
+        rand1    =    -2.9820693202068
+        rand2    =    -1.0387528084711
+        rand3    =    0
+15:
+        mdl    =    CSEntity [class C_BaseFlex]
+        rand1    =    4.5370710828506
+        rand2    =    -1.4991045146674
+        rand3    =    -180
+
+
+
+
+

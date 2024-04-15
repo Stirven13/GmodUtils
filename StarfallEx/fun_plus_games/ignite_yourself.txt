@@ -1,0 +1,40 @@
+--@name IgniteYourself
+--@author NepNep | discord: stirven
+--@server
+
+local function createInvisibleCube()
+    local success, result = pcall(function()
+        local cube = prop.create(Vector(), Angle(), "models/hunter/blocks/cube025x025x025.mdl", true)
+        cube:setColor(Color(0, 0, 0, 0))
+        cube:setNocollideAll(true)
+        cube:setCollisionGroup(COLLISION_GROUP.IN_VEHICLE)
+        return cube
+    end)
+    
+    if success then
+        return result
+    end
+end
+
+local countCubes = 1
+
+local cubes = {}
+for i = 1, countCubes do
+    cubes[i] = createInvisibleCube()
+end
+
+hook.add("tick", "checkCorrectCube", function()
+    for index, cube in ipairs(cubes) do
+        if not isValid(cube) then
+            cubes[index] = createInvisibleCube()
+        end
+    end
+end)
+
+hook.add("tick", "IgniteCube", function()
+    for _, cube in ipairs(cubes) do
+        if not isValid(cube) then continue end
+        cube:setPos(owner():getPos())
+        cube:ignite(1, 1)
+    end
+end)

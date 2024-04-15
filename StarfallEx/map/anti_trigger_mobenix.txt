@@ -1,0 +1,32 @@
+--@name GmMobenixWinter Change AntiTriger
+--@author NepNep | discord: stirven
+--@server
+
+local function myAntiTriggerProp(ent)
+    if not isValid(ent) then return false end
+    if ent:getOwner() != owner() then return false end
+    if ent:getModel() != "models/hunter/plates/plate32x32.mdl" then return false end
+    
+    return true
+end
+
+local myAntiTriggerProps = find.all(myAntiTriggerProp)
+
+for i, myProp in ipairs(myAntiTriggerProps) do
+    local colorMyProp = myProp:getColor()
+    local newColorMyProp = colorMyProp:setA(255)
+    -- local newColorMyProp = Color(255, 204, 174, 255)
+    //local newColorMyProp = colorMyProp:setA(0)
+    myProp:setColor(newColorMyProp)
+    
+    
+    --myProp:setMaterial("models/shiny")
+    myProp:setMaterial("models/props_lab/warp_sheet")
+    
+    
+    myProp:setCollisionGroup(COLLISION_GROUP.IN_VEHICLE)
+    --myProp:setCollisionGroup(COLLISION_GROUP.NONE)
+    
+end
+
+chip():remove()

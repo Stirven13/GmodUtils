@@ -1,0 +1,14 @@
+--@name HookExample
+--@author NepNep | discord: stirven
+--@server
+
+hook.add("PlayerSay", "CustomNamePlayerSay", function(ply, text, teamChat)
+    local nickWithoutTag, _ = string.gsub(ply:getName(), "<[^>]*>", "")
+    print("Player " .. nickWithoutTag .. " write something.")
+end)
+
+hook.add("PlayerSay", "SecondCustomNamePlayerSay", function(ply, text, teamChat)
+    local nickWithoutTag, _ = string.gsub(ply:getName(), "<[^>]*>", "")
+    print("Player " .. nickWithoutTag .. " write " .. text)
+end)
+

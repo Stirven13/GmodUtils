@@ -1,0 +1,6 @@
+--@name OwnerModelSpawn
+--@author NepNep | discord: stirven
+--@server
+
+concmd("gm_spawn " .. owner():getModel())
+chip():remove()

@@ -1,0 +1,33 @@
+--@name DetectTrain
+--@author NepNep | discord: stirven
+--@server
+
+// Best method is build train by connect to one prop. This prop will be move my chip.
+
+local propFindConfig = {
+    model = "models/hunter/blocks/cube2x6x025.mdl",
+    color = Color(0, 160, 255, 100),
+    material_ = "models/props_interiors/metalfence007a"
+}
+
+local propAfterFindConfig = {
+    color = Color(255, 255, 255, 255),
+    material_ = nil
+}
+
+local function filterToFindTrail(ent)
+    if ent:getOwner() != owner() then 
+        return false 
+    end
+    
+    if ent:getModel() == propFindConfig.model and ent:getColor() == propFindConfig.color and ent:getMaterial() == propFindConfig.material_ then
+        return true
+    end
+    
+    return false
+end
+
+local allegedTrains = find.all(filterToFindTrail)
+local train = allegedTrains[table.count(allegedTrains)]
+
+print(train)

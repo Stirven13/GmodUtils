@@ -1,0 +1,515 @@
+--@name AdvancedPortalDoor
+--@author NepNep | discord: stirven
+--@server
+
+-- CONFIG BLOCK
+-- CONFIG BLOCK
+-- CONFIG BLOCK
+
+local DOOR_COMMAND = "!nd" -- Empty to auto create or type your command. Example: "!nepdoor"
+
+
+
+-- FUNCTION BLOCK
+-- FUNCTION BLOCK
+-- FUNCTION BLOCK
+
+local function getPlayerByData(data)    
+    local players = find.allPlayers()
+    
+    for _, player in ipairs(players) do
+        if player:getSteamID() == string.upper(data) then
+            return player
+        elseif player:getSteamID64() == string.upper(data) then
+            return player
+        end
+        
+        local nickWithoutTag, _ = string.gsub(player:getName(), "<[^>]*>", "")
+        nickWithoutTag = string.lower(nickWithoutTag)
+        if nickWithoutTag == string.lower(data) then
+            return player
+        end
+    end
+    
+    for _, player in ipairs(players) do
+        local nickWithoutTag, _ = string.gsub(player:getName(), "<[^>]*>", "")
+        nickWithoutTag = string.lower(nickWithoutTag)
+        if not string.find(nickWithoutTag, string.lower(data)) then continue end
+        return player
+    end
+end
+
+
+
+-- CLASS BLOCK
+-- CLASS BLOCK
+-- CLASS BLOCK
+
+local MapData = class("MapData")
+
+function MapData:correctMapSize()
+    if self.mapName == "gm_vyten" then
+        self.mapSizeMax.z = 12000
+    elseif self.mapName == "gm_mobenix_v3_final" then
+        self.mapSizeMax.z = 5000
+    elseif self.mapName == "gm_bigcity_improved" then
+        self.mapSizeMax.z = 1500
+    elseif self.mapName == "gm_novenka_d" then
+        self.mapSizeMax.z = 10000
+    elseif self.mapName == "gm_excess_construct_13" then
+        self.mapSizeMax.z = 3000
+    elseif self.mapName == "gm_mobenix_winter" then
+        self.mapSizeMax.z = 3000
+    elseif self.mapName == "gm_thebox_17" then
+        self.mapSizeMin.z = -13500
+        self.mapSizeMax.z = -10000
+    elseif self.mapName == "gm_goldencity_v2_day" then
+        self.mapSizeMin.z = 0
+        self.mapSizeMax.z = 9000
+    else
+        print("Use a default map size - " .. self.mapName)
+    end
+end
+
+function MapData:getSpawnSize()
+    
+end
+
+function MapData:initialize()
+    self.entity = entity(0)
+    self.mapName = game.getMap()
+    self.mapSizeMin, self.mapSizeMax = self.entity:getModelBounds()
+    self:correctMapSize()
+end
+
+
+
+local DoorSystem = class("DoorSystem")
+
+function DoorSystem:createDoor()
+    local success, result = pcall(function()
+        local door = hologram.create(Vector(), Angle(), "models/props_c17/door01_left.mdl")
+        print("create door")
+        if not isValid(door) then
+            print("error create door")
+            error()
+        end
+        door:setSkin(11)
+        door:setBodygroup(1, 1)
+        return door
+    end)
+    
+    if not success then return end
+    return result
+end
+
+function DoorSystem:createVehicle()
+    local success, result = pcall(function()
+        local vehicle = prop.createSent(Vector(), Angle(), "Chair_Wood", true)
+        print("create vehicle")
+        if not isValid(vehicle) then
+            print("error create vehicle")
+            error()
+        end
+        vehicle:setColor(Color(0, 0, 0, 0))
+        vehicle:setNocollideAll(true)
+        return vehicle
+    end)
+    
+    if not success then return end
+    return result
+end
+
+function DoorSystem:removeOnLeaveVehicle(ply, vehicle)
+    if not self then return end
+    if not isValid(vehicle) then return end
+    if not isValid(self.vehicle) then return end
+    if vehicle:entIndex() ~= self.vehicle:entIndex() then return end
+    
+    vehicle:remove()
+end
+
+function DoorSystem:getPos()
+    return self.pos
+end
+
+function DoorSystem:getAngles()
+    return self.angle
+end
+
+function DoorSystem:setPos(newPos)
+    self.pos = newPos
+    
+    if isValid(self.door) then
+        local tempDoorOffsetPos = self.doorOffsetPos:clone()
+        tempDoorOffsetPos:rotate(self.angle)
+        self.door:setPos(newPos + tempDoorOffsetPos)
+    end
+    
+    if isValid(self.vehicle) then
+        self.vehicle:setPos(newPos)
+    end
+end
+
+function DoorSystem:setAngles(newAngles)
+    self.angle = newAngles
+    
+    if isValid(self.door) then
+        self.door:setAngles(newAngles)
+        
+        self:setPos(self.pos)
+    end
+    
+    if isValid(self.vehicle) then
+        self.vehicle:setAngles(newAngles)
+    end
+end
+
+function DoorSystem:isValid()
+    return self.pos ~= nil and isValid(self.door) and isValid(self.vehicle)
+end
+
+function DoorSystem:makeValid()
+    if not self then return end
+    if self.pos == nil then return end
+    
+    if not isValid(self.door) then
+        self.door = self:createDoor()
+        self:setPos(self.pos)
+        self:setAngles(self.angle)
+    end
+    
+    if not isValid(self.vehicle) then
+        self.vehicle = self:createVehicle()
+        self:setPos(self.pos)
+        self:setAngles(self.angle)
+    end
+end
+
+function DoorSystem:initialize(door_name)
+    self.door_name = door_name
+    
+    self.door = self:createDoor()
+    self.vehicle = self:createVehicle()
+    self.pos = nil
+    self.angle = Angle()
+    self.doorOffsetPos = Vector(0, -23.640625, 54.28125)
+    
+    hook.add("Tick", string.format("MakeValid%s", self.door_name), function()
+        self:makeValid()
+    end)
+end
+
+
+
+local PortalDoorSystem = class("PortalDoorSystem")
+
+function PortalDoorSystem:initialize(txt_command)
+    self.map = MapData:new()
+    self.txt_command = txt_command
+    
+    self.door1 = DoorSystem:new("Door1")
+    self.door2 = DoorSystem:new("Door2")
+    
+    self.openSound = "Doors.FullOpen4"
+    self.closeSound = "Doors.FullClose4"
+    self.epsilon = 0.1
+    self.doorSize = Vector(11.728854656219, 48.5625, 108.5625)
+    self.doorTeleportTime = 0.25
+end
+
+function PortalDoorSystem:traceCorrectPoint(firstPoint, secondPoint)
+    local midPoint = (firstPoint + secondPoint) / 2
+    
+    if firstPoint:getDistance(midPoint) < self.epsilon then
+        return firstPoint
+    end
+    
+    local firstTraceResult = trace.line(firstPoint, midPoint)
+    if firstTraceResult.Hit then
+        return self:traceCorrectPoint(firstPoint, midPoint)
+    end
+    
+    local secondTraceResult = trace.line(midPoint, secondPoint)
+    if secondTraceResult.Hit then
+        return self:traceCorrectPoint(midPoint, secondPoint)
+    end
+    
+    return firstPoint
+end
+
+function PortalDoorSystem:findFloor(point, minPointFloor, maxPointFloor)
+    local upPoint = Vector(point.x, point.y, maxPointFloor)    
+    local downPoint = Vector(point.x, point.y, minPointFloor)
+    
+    local roofTraceResult = trace.line(upPoint, downPoint)
+    if not roofTraceResult.Hit then return nil end
+    
+    local roofPoint = roofTraceResult.HitPos
+    
+    local correctedPoint = self:traceCorrectPoint(roofPoint, downPoint)
+    
+    return correctedPoint
+end
+
+function PortalDoorSystem:checkNotFreeSpace(point, neededSpace)
+    local allPoint = {
+        point + Vector(neededSpace.x, 0, 0),
+        point + Vector(neededSpace.x, neededSpace.y, 0),
+        point + Vector(0, neededSpace.y, 0),
+        point + Vector(-neededSpace.x, neededSpace.y, 0),
+        point + Vector(-neededSpace.x, 0, 0),
+        point + Vector(-neededSpace.x, -neededSpace.y, 0),
+        point + Vector(0, -neededSpace.y, 0),
+        point + Vector(neededSpace.x, -neededSpace.y, 0),
+        
+        point + Vector(neededSpace.x, 0, 0),
+        point + Vector(neededSpace.x, neededSpace.y, neededSpace.z),
+        point + Vector(0, neededSpace.y, neededSpace.z),
+        point + Vector(-neededSpace.x, neededSpace.y, neededSpace.z),
+        point + Vector(-neededSpace.x, 0, neededSpace.z),
+        point + Vector(-neededSpace.x, -neededSpace.y, neededSpace.z),
+        point + Vector(0, -neededSpace.y, neededSpace.z),
+        point + Vector(neededSpace.x, -neededSpace.y, neededSpace.z)
+    }
+    
+    for _, currentPoint in ipairs(allPoint) do
+        if not point:isInWorld(currentPoint) then
+            return true
+        end
+    end
+    
+    local allEdges = {
+        { point + Vector(neededSpace.x, neededSpace.y, neededSpace.z / 4), point + Vector(neededSpace.x, -neededSpace.y, neededSpace.z / 4) },
+        { point + Vector(neededSpace.x, -neededSpace.y, neededSpace.z / 4), point + Vector(-neededSpace.x, -neededSpace.y, neededSpace.z / 4) },
+        { point + Vector(-neededSpace.x, -neededSpace.y, neededSpace.z / 4), point + Vector(-neededSpace.x, neededSpace.y, neededSpace.z / 4) },
+        { point + Vector(-neededSpace.x, neededSpace.y, neededSpace.z / 4), point + Vector(neededSpace.x, neededSpace.y, neededSpace.z / 4) },
+    }
+    
+    for _, currentGroupEdge in ipairs(allEdges) do
+        local traceData = trace.line(currentGroupEdge[1], currentGroupEdge[2])
+        if traceData.Hit then return true end
+    end
+    
+    return false
+end
+
+function PortalDoorSystem:isInWater(point)
+    local pointContent = trace.pointContents(point)
+    return bit.band(pointContent, CONTENTS.WATER) ~= 0
+end
+
+function PortalDoorSystem:setDoorForPlayer(ply)
+    local traceResult = ply:getEyeTrace()
+    if not traceResult.Hit then return end
+    
+    local plySize = ply:obbSize()
+    
+    self.door1:setPos(traceResult.HitPos)
+    self.door1:setAngles(Angle(0, 1, 0) * ply:getEyeAngles())
+    
+    local angle2 = Angle(0, 1, 0) * ply:getEyeAngles()
+    
+    local tryCount = 0
+    hook.add("tick", "FindPoint", function()
+        while true do
+            if cpuTotalAverage() > cpuMax() * 0.75 then return end
+            tryCount = tryCount + 1
+            
+            local randomPoint = Vector(math.random(self.map.mapSizeMin.x, self.map.mapSizeMax.x), math.random(self.map.mapSizeMin.y, self.map.mapSizeMax.y), 0)
+            local correctPoint = self:findFloor(randomPoint, self.map.mapSizeMin.z, self.map.mapSizeMax.z)
+            
+            if tryCount % 1000 == 0 then
+                if tryCount == 50000 then
+                    print("PortalDoorSystem: can't find place.")
+                    hook.remove("tick", "FindPoint")
+                    return
+                end
+                print("PortalDoorSystem: try to find place: " .. tryCount)
+            end
+            
+            if correctPoint == nil then continue end
+            if self:isInWater(correctPoint) then continue end
+            if self:checkNotFreeSpace(correctPoint, plySize) then continue end
+            
+            point2 = correctPoint:clone()
+            
+            self.door2:setPos(point2)
+            self.door2:setAngles(angle2)
+            
+            self.door1:makeValid()
+            self.door2:makeValid()
+            
+            hook.remove("tick", "FindPoint")
+            return
+        end
+    end)
+end
+
+function PortalDoorSystem:setDoorToPlayer(ply, neededPly)
+    local traceResult = ply:getEyeTrace()
+    if not traceResult.Hit then return end
+    
+    local plySize = ply:obbSize()
+    local playerNeedPlaceMin = neededPly:getPos() - Vector(200, 200, 10)
+    local playerNeedPlaceMax = neededPly:getPos() + Vector(200, 200, 72)
+    
+    self.door1:setPos(traceResult.HitPos)
+    self.door1:setAngles(Angle(0, 1, 0) * ply:getEyeAngles())
+    
+    local angle2 = Angle(0, 1, 0) * ply:getEyeAngles()
+    
+    local tryCount = 0
+    hook.add("tick", "FindPoint", function()
+        while true do
+            if cpuTotalAverage() > cpuMax() * 0.75 then return end
+            tryCount = tryCount + 1
+            
+            local randomPoint = Vector(math.random(playerNeedPlaceMin.x, playerNeedPlaceMax.x), math.random(playerNeedPlaceMin.y, playerNeedPlaceMax.y), 0)
+            local correctPoint = self:findFloor(randomPoint, playerNeedPlaceMin.z, playerNeedPlaceMax.z)
+            
+            if tryCount % 1000 == 0 then
+                if tryCount == 10000 then
+                    print("PortalDoorSystem: can't find place.")
+                    hook.remove("tick", "FindPoint")
+                    return
+                end
+                print("PortalDoorSystem: try to find place: " .. tryCount)
+            end
+            
+            if correctPoint == nil then continue end
+            if self:isInWater(correctPoint) then continue end
+            if self:checkNotFreeSpace(correctPoint, plySize) then continue end
+            
+            point2 = correctPoint:clone()
+            
+            self.door2:setPos(point2)
+            self.door2:setAngles(angle2)
+            
+            self.door1:makeValid()
+            self.door2:makeValid()
+            
+            hook.remove("tick", "FindPoint")
+            return
+        end
+    end)
+end
+
+function PortalDoorSystem:reactOnCommand(ply, text)
+    text = string.lower(text)
+    if not string.startWith(text, self.txt_command) then return end
+    
+    local separated_text = string.split(text, " ")
+    for i = #separated_text, 1, -1 do
+        if separated_text[i] ~= "" then continue end
+        table.remove(separated_text, i)
+    end
+    
+    if #separated_text == 1 then
+        self:setDoorForPlayer(ply)
+        
+    elseif #separated_text == 2 and separated_text[2] == "pos1" then
+        local traceResult = ply:getEyeTrace()
+        if not traceResult.Hit then return end
+        self.door1:setPos(traceResult.HitPos)
+        self.door1:setAngles(Angle(0, 1, 0) * ply:getEyeAngles())
+        
+    elseif #separated_text == 2 and separated_text[2] == "pos2" then
+        local traceResult = ply:getEyeTrace()
+        if not traceResult.Hit then return end
+        self.door2:setPos(traceResult.HitPos)
+        self.door2:setAngles(Angle(0, 1, 0) * ply:getEyeAngles())
+    elseif #separated_text >= 3 and table.hasValue({"ply", "player"}, separated_text[2]) then
+        local neededPlayerName = table.concat(separated_text, " ", 3)
+        local neededPlayer = getPlayerByData(neededPlayerName)
+        if neededPlayer == nil then return end
+        self:setDoorToPlayer(ply, neededPlayer)
+    end
+end
+
+function PortalDoorSystem:playerEnterInVehicle(ply, vehicle)
+    if not isValid(vehicle) then return end
+    
+    if self.door1:isValid() and not self.door2:isValid() then
+        if vehicle:entIndex() == self.door1.vehicle:entIndex() then
+            self.door1.vehicle:remove()
+        end
+    end
+    
+    if self.door2:isValid() and not self.door1:isValid() then
+        if vehicle:entIndex() == self.door2.vehicle:entIndex() then
+            self.door2.vehicle:remove()
+        end
+    end    
+    
+    if not self.door1:isValid() then return end
+    if not self.door2:isValid() then return end
+    
+    if vehicle:entIndex() == self.door1.vehicle:entIndex() then
+        self.door1.door:emitSound(self.openSound)
+        self.door2.door:emitSound(self.closeSound)
+        self.door1.vehicle:setPos(self.door2:getPos())
+        timer.simple(self.doorTeleportTime, function()
+            if isValid(self.door1.vehicle) then
+                self.door1.vehicle:remove()
+            end
+        end)
+        return
+    end
+    
+    if vehicle:entIndex() == self.door2.vehicle:entIndex() then
+        self.door2.door:emitSound(self.openSound)
+        self.door1.door:emitSound(self.closeSound)
+        self.door2.vehicle:setPos(self.door1:getPos())
+        timer.simple(self.doorTeleportTime, function()
+            if isValid(self.door2.vehicle) then
+                self.door2.vehicle:remove()
+            end
+        end)
+        return
+    end
+end
+
+
+
+-- FUNCTION BLOCK
+-- FUNCTION BLOCK
+-- FUNCTION BLOCK
+
+local function extractFirstEnglishWord(inputText)
+    local nickWithoutTag, replacementCount = string.gsub(inputText, "<[^>]*>", "")
+    local firstWord = nickWithoutTag:match("%a+")
+    return firstWord
+end
+
+local function createMainCommand()
+    if DOOR_COMMAND != "" then return string.lower(DOOR_COMMAND) end
+    
+    local firstWordNick = extractFirstEnglishWord(owner():getName())
+    if firstWordNick == nil then
+        error("Please type DOOR_COMMAND in code.")
+    end
+    
+    return "!" .. string.lower(firstWordNick) .. "door"
+end
+
+
+
+-- MAIN BLOCK
+-- MAIN BLOCK
+-- MAIN BLOCK
+
+local mainCommand = createMainCommand()
+print("Your command for door: " .. mainCommand)
+
+local portalDoorSystem = PortalDoorSystem:new(mainCommand)
+
+hook.add("PlayerSay", "CheckPlayerSay", function(ply, text, teamChat)
+    portalDoorSystem:reactOnCommand(ply, text)
+end)
+
+hook.add("PlayerEnteredVehicle", "TeleportWhenEnterInPod", function(ply, vehicle, num)
+    portalDoorSystem:playerEnterInVehicle(ply, vehicle)
+end)
+
+

@@ -1,0 +1,332 @@
+--@name Control Pigeon
+--@author NepNep | discord: stirven
+--@shared
+
+
+if CLIENT then
+    // ####################################################################################################
+    // INITIALIZATION
+    // ####################################################################################################
+    if player() ~= owner() then return end
+    
+    animations = {
+        FLY = 0,
+        IDLE_1 = 1,
+        WALK = 2,
+        RUN = 3,
+        IDLE_2 = 4,
+        IDLE_3 = 5,
+        JUMP = 6,
+        SOAR = 7,
+        WALK_LANDING = 8,
+        WALK_SMOOTH_LANDING = 9,
+        RUN_LANDING = 10,
+        RUN_SMOOTH_LANDING = 11
+    }
+    
+    
+    
+    // ####################################################################################################
+    // KEY CHECKER FOR CORRECT MOVEMENT
+    // ####################################################################################################
+    local pressedKeys = {
+        [IN_KEY.ATTACK] = false,
+        [IN_KEY.ATTACK2] = false,
+        [IN_KEY.BACK] = false,
+        [IN_KEY.DUCK] = false,
+        [IN_KEY.FORWARD] = false,
+        [IN_KEY.JUMP] = false,
+        [IN_KEY.MOVELEFT] = false,
+        [IN_KEY.MOVERIGHT] = false,
+        [IN_KEY.RELOAD] = false,
+        [IN_KEY.SPEED] = false,
+        [IN_KEY.USE] = false,
+        [IN_KEY.WALK] = false
+    }
+    
+    hook.add("KeyPress", "KeyPress", function(ply, key)
+        if ply ~= owner() then return end
+        if table.hasValue(table.getKeys(pressedKeys), key) then
+            pressedKeys[key] = true
+        end
+    end)
+    
+    hook.add("KeyRelease", "KeyRelease", function(ply, key)
+        if ply ~= owner() then return end
+        if table.hasValue(table.getKeys(pressedKeys), key) then
+            pressedKeys[key] = false 
+        end
+    end)
+    
+    
+    
+    // ####################################################################################################
+    // SYNC isDrive
+    // ####################################################################################################
+    local isDrive = false
+    net.receive("ChangeIsDrive", function()
+        isDrive = net.readBool()
+    end)
+    
+    
+    
+    // ####################################################################################################
+    // SendEntities USE FOR SYNC
+    // ####################################################################################################
+    net.receive("SendEntities", function()
+        // INITIALIZATION
+        local sphere = net.readEntity()
+        local pigeon = net.readEntity()
+        
+        // ANIMATION
+        local isAnimation = false
+        local lastAnimation = nil
+        
+        local function setPigeonAnimation(animationValue, delay)
+            if isAnimation then return end
+            if lastAnimation == animationValue then return end
+            lastAnimation = animationValue
+            net.start("setPigeonAnimation")
+            net.writeInt(animationValue, 16)
+            net.send()
+            if delay then
+                isAnimation = true
+                timer.simple(delay, function()
+                    isAnimation = false
+                end)
+            else
+                isAnimation = false
+            end
+        end
+        
+        setPigeonAnimation(animations.IDLE_1, 0.5)
+        
+        hook.add("tick", "changePigeonAnimation", function()        
+            local isOnGround = trace.line(sphere:getPos() - Vector(0, 0, 6), sphere:getPos() - Vector(0, 0, 15)).Hit
+            
+            if not pressedKeys[IN_KEY.FORWARD] and not pressedKeys[IN_KEY.BACK] and not pressedKeys[IN_KEY.MOVELEFT] and not pressedKeys[IN_KEY.MOVERIGHT] and not pressedKeys[IN_KEY.JUMP] and not isOnGround then
+                setPigeonAnimation(animations.SOAR)
+            elseif isOnGround and table.hasValue({animations.FLY, animations.JUMP, animations.SOAR}, lastAnimation) and pressedKeys[IN_KEY.DUCK] then
+                setPigeonAnimation(animations.RUN_LANDING, 0.7)
+            elseif isOnGround and table.hasValue({animations.FLY, animations.JUMP, animations.SOAR}, lastAnimation) then
+                setPigeonAnimation(animations.WALK_LANDING, 1)
+            elseif not pressedKeys[IN_KEY.FORWARD] and not pressedKeys[IN_KEY.BACK] and not pressedKeys[IN_KEY.MOVELEFT] and not pressedKeys[IN_KEY.MOVERIGHT] and isOnGround then
+                setPigeonAnimation(animations.IDLE_1)
+            elseif pressedKeys[IN_KEY.JUMP] and not table.hasValue({animations.FLY, animations.SOAR}, lastAnimation) then
+                setPigeonAnimation(animations.JUMP, 0.7)
+            elseif (pressedKeys[IN_KEY.FORWARD] or pressedKeys[IN_KEY.BACK] or pressedKeys[IN_KEY.MOVELEFT] or pressedKeys[IN_KEY.MOVERIGHT]) and isOnGround and pressedKeys[IN_KEY.WALK] then
+                setPigeonAnimation(animations.WALK)
+            elseif (pressedKeys[IN_KEY.FORWARD] or pressedKeys[IN_KEY.BACK] or pressedKeys[IN_KEY.MOVELEFT] or pressedKeys[IN_KEY.MOVERIGHT]) and isOnGround then
+                setPigeonAnimation(animations.RUN)
+            elseif not isOnGround then
+                setPigeonAnimation(animations.FLY)
+            end
+        end)
+        
+        // CALCVIEW
+        hook.add("CalcView", "PigeonCalcView", function(pos, ang, fov, znear, zfar)
+            if not isDrive then return end
+            
+            newView = {
+                origin = pigeon:getPos() + Vector(0, 0, 20),
+                angles = ang + Angle(0, 180, 0),
+                fov = fov,
+                drawviewer = true
+            }
+            
+            return newView
+        end)
+        
+        // FLASHLIGHT CHECK
+        hook.add("PlayerSwitchFlashlight", "PlayerSwitchFlashlight", function(ply, state)
+            net.start("FlashlightSwitch")
+            net.writeBool(state)
+            net.send()
+        end)
+    end)
+      
+    
+    
+elseif SERVER then
+    // ####################################################################################################
+    // CONFIG
+    // ####################################################################################################
+    local pigeonSpeed = {
+        SlowWalk = 100,
+        Walk = 400,
+        Speed = 1000
+    }
+    
+    
+    
+    // ####################################################################################################
+    // INITIALIZATION
+    // ####################################################################################################
+    local soundsFly = {
+        "ambient/animal/bird_flapping_1.wav",
+        "ambient/animal/bird_flapping_2.wav",
+        "ambient/animal/bird_flapping_3.wav"
+    }
+    
+    local flashlightSound = "items/flashlight1.wav"
+    
+    local enumControlMods = { DEFAULT = 0 }
+    local currentControlMode = enumControlMods.DEFAULT
+    
+    local sphere = prop.create(chip():getPos() + Vector(0, 0, 10), Angle(), "models/hunter/misc/sphere025x025.mdl")
+    sphere:setColor(Color(0, 0, 0, 0))
+    sphere:setMass(1)
+    
+    local pigeon = hologram.create(chip():getPos() + Vector(0, 0, 10), Angle(), "models/pigeon.mdl")
+    
+    enableHud(owner(), true)
+    
+    // For change pigeon animation
+    net.receive("setPigeonAnimation", function()
+        pigeon:setAnimation(net.readInt(16))
+    end)
+    
+    
+    
+    // ####################################################################################################
+    // BLOCK CREATE CHAIR AND CHECK isDRIV
+    // ####################################################################################################
+    local chair = prop.createSent(chip():getPos(), Angle(), "Chair_Wood", true)
+    local isDrive = false
+    
+    local function setIsDrive(state)
+        isDrive = state
+        net.start("ChangeIsDrive")
+        net.writeBool(state)
+        net.send()
+    end
+    
+    local function checkIsDrive(ply, vehicle, role)
+        if ply ~= owner() then return end
+        if vehicle ~= chair then return end -- If the vehicle in question isn't our chair, exit without doing anything
+        if role == 0 then
+            setIsDrive(true)
+            // owner():setViewEntity(pigeon)
+        else
+            setIsDrive(false)
+            // owner():setViewEntity(nil)
+        end
+    end
+    
+    hook.add("PlayerEnteredVehicle", "CheckIsDriver", checkIsDrive)
+    hook.add("PlayerLeaveVehicle", "CheckIsDriver", checkIsDrive)
+    
+    
+    
+    // ####################################################################################################
+    // KEY CHECKER FOR CORRECT MOVEMENT
+    // ####################################################################################################
+    local pressedKeys = {
+        [IN_KEY.ATTACK] = false,
+        [IN_KEY.ATTACK2] = false,
+        [IN_KEY.BACK] = false,
+        [IN_KEY.DUCK] = false,
+        [IN_KEY.FORWARD] = false,
+        [IN_KEY.JUMP] = false,
+        [IN_KEY.MOVELEFT] = false,
+        [IN_KEY.MOVERIGHT] = false,
+        [IN_KEY.RELOAD] = false,
+        [IN_KEY.SPEED] = false,
+        [IN_KEY.USE] = false,
+        [IN_KEY.WALK] = false
+    }
+    
+    hook.add("KeyPress", "KeyPress", function(ply, key)
+        if ply ~= owner() then return end
+        if table.hasValue(table.getKeys(pressedKeys), key) then
+            pressedKeys[key] = true
+        end
+    end)
+    
+    hook.add("KeyRelease", "KeyRelease", function(ply, key)
+        if ply ~= owner() then return end
+        if table.hasValue(table.getKeys(pressedKeys), key) then
+            pressedKeys[key] = false 
+        end
+    end)
+    
+    
+    
+    // ####################################################################################################
+    // CALCULATING OF ALL | TICK 
+    // ####################################################################################################
+    hook.add("tick", "Calculate", function()
+        localPlayer = owner()
+        
+        pigeon:setPos(sphere:getPos() + Vector(0, 0, -5))
+        calculateControl(localPlayer)
+        
+        sphere:setAngles(localPlayer:getAimVector():getAngle() + Angle(0, 0, 0))
+        sphere:setAngleVelocity(Vector(0))
+        
+        pigeonNewAngles = localPlayer:getAimVector():getAngle()
+        pigeonNewAngles.p = math.clamp(pigeonNewAngles.p, -20, 20)
+        pigeonNewAngles.y = pigeonNewAngles.y + 180
+        //print(pigeonNewAngles, pigeonNewAngles.p, pigeonNewAngles.y, pigeonNewAngles.r)
+        pigeon:setAngles(pigeonNewAngles)
+    end)
+    
+    
+    
+    // ####################################################################################################
+    // Movement of pigeon
+    // ####################################################################################################
+    function calculateControl()
+        if currentControlMode == enumControlMods.DEFAULT then
+            if not isDrive then return end
+            local degreeY = sphere:getAngles().y + 180
+            
+            local currentPigeonSpeed = pigeonSpeed.Walk
+            
+            if pressedKeys[IN_KEY.SPEED] then
+                currentPigeonSpeed = pigeonSpeed.Speed
+            elseif pressedKeys[IN_KEY.WALK] then
+                currentPigeonSpeed = pigeonSpeed.SlowWalk
+            end
+            
+            if pressedKeys[IN_KEY.FORWARD] and not pressedKeys[IN_KEY.BACK] then
+                sphere:addVelocity(Vector(math.cos(math.rad(degreeY)) * currentPigeonSpeed, math.sin(math.rad(degreeY)) * currentPigeonSpeed, 0))
+            elseif pressedKeys[IN_KEY.BACK] and not pressedKeys[IN_KEY.FORWARD] then
+                sphere:addVelocity(Vector(math.cos(math.rad(degreeY)) * -currentPigeonSpeed, math.sin(math.rad(degreeY)) * -currentPigeonSpeed, 0))
+            end
+            
+            if pressedKeys[IN_KEY.MOVELEFT] and not pressedKeys[IN_KEY.MOVERIGHT] then
+                sphere:addVelocity(Vector(math.cos(math.rad(degreeY + 90)) * currentPigeonSpeed, math.sin(math.rad(degreeY + 90)) * currentPigeonSpeed, 0))
+            elseif pressedKeys[IN_KEY.MOVERIGHT] and not pressedKeys[IN_KEY.MOVELEFT] then
+                sphere:addVelocity(Vector(math.cos(math.rad(degreeY + 90)) * -currentPigeonSpeed, math.sin(math.rad(degreeY + 90)) * -currentPigeonSpeed, 0))
+            end
+            
+            if pressedKeys[IN_KEY.JUMP] and not pressedKeys[IN_KEY.DUCK] then
+                sphere:addVelocity(Vector(0, 0, currentPigeonSpeed))               
+            elseif pressedKeys[IN_KEY.DUCK] and not pressedKeys[IN_KEY.JUMP] then
+                sphere:addVelocity(Vector(0, 0, -currentPigeonSpeed))               
+            end
+        end
+    end
+    
+    
+    
+    // ####################################################################################################
+    // FLASHLIGHT CHECK
+    // ####################################################################################################
+    net.receive("FlashlightSwitch", function()
+        state = net.readBool()
+        pigeon:emitSound(flashlightSound)
+    end)
+    
+    
+    // ####################################################################################################
+    // SEND ENTITIES FOR SYNC
+    // ####################################################################################################
+    timer.simple(1, function()
+        net.start("SendEntities")
+        net.writeEntity(sphere)
+        net.writeEntity(pigeon)
+        net.send()
+    end)
+end

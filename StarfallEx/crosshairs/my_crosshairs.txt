@@ -1,0 +1,158 @@
+--@name Crosshair
+--@author NepNep | discord: stirven
+--@client
+
+
+if player() ~= owner() then return end
+
+enableHud(nil, true)
+
+local CONFIG = class("CONFIG")
+
+function CONFIG:initialize()
+    // Configuration for setting the form of the sight
+    self.gapInMiddle = 10 // Changes the distance between lines
+    --[[
+        This is how the sight would be changed if it were horizontal
+        2:   ===  ===
+        4:  ===    ===
+        6: ===      ===
+    ]]
+    
+    self.lengthOfLines = 10 // Changes the length of lines
+    --[[
+        This is how the sight would be changed if it were horizontal
+        3:   ===  ===
+        4:  ====  ====
+        5: =====  =====
+    ]]
+    
+    self.thicknessOfLines = 1 // Changes the width of lines
+    --[[
+        This is how the sight would be changed if it were horizontal
+        1: ==  ==
+        
+        2: ==  ==
+           ==  ==
+        
+        4: ==  ==
+           ==  ==
+           ==  ==
+           ==  ==
+    ]]
+    
+    self.outlineThickness = 1 // Changes the outline width of lines
+    --[[
+        = - Crosshail
+        # - Outline
+        
+        0: == ==
+        
+        1: ####  ####
+           #==#  #==#
+           ####  ####
+        
+        2: ######  ######
+           ######  ######
+           ##==##  ##==##
+           ######  ######
+           ######  ######
+    ]]
+        
+    
+    // Configuration for Color of sight
+    self.normalColor = Color(0, 255, 255)
+    self.onTargetColor = Color(255, 51, 51)
+    self.outlineColor = Color(0, 0, 0)
+    
+    // Advanced settings
+    self.onRainbow = false
+end
+
+
+
+screenSizeX, screenSizeY = render.getGameResolution()
+
+local config = CONFIG:new()
+x,y = render.getGameResolution()
+
+outlinePoses = {
+    {
+        x = x / 2 - config.gapInMiddle / 2 - config.outlineThickness * 2 - config.lengthOfLines,
+        y = y / 2 - config.thicknessOfLines / 2 - config.outlineThickness,
+        w = config.outlineThickness * 2 + config.lengthOfLines,
+        h = config.outlineThickness * 2 + config.thicknessOfLines
+    },
+    {
+        x = x / 2 + config.gapInMiddle / 2,
+        y = y / 2 - config.thicknessOfLines / 2 - config.outlineThickness,
+        w = config.outlineThickness * 2 + config.lengthOfLines,
+        h = config.outlineThickness * 2 + config.thicknessOfLines
+    },
+    {
+        x = x / 2 - config.thicknessOfLines / 2 - config.outlineThickness,
+        y = y / 2 - config.gapInMiddle / 2 - config.outlineThickness * 2 - config.lengthOfLines,
+        w = config.outlineThickness * 2 + config.thicknessOfLines,
+        h = config.outlineThickness * 2 + config.lengthOfLines
+    },
+    {
+        x = x / 2 - config.thicknessOfLines / 2 - config.outlineThickness,
+        y = y / 2 + config.gapInMiddle / 2,
+        w = config.outlineThickness * 2 + config.thicknessOfLines,
+        h = config.outlineThickness * 2 + config.lengthOfLines
+    }
+}
+
+linePoses = {
+    {
+        x = x / 2 - config.gapInMiddle / 2 - config.outlineThickness - config.lengthOfLines,
+        y = y / 2 - config.thicknessOfLines / 2,
+        w = config.lengthOfLines,
+        h = config.thicknessOfLines
+    },
+    {
+        x = x / 2 + config.gapInMiddle / 2 + config.outlineThickness,
+        y = y / 2 - config.thicknessOfLines / 2,
+        w = config.lengthOfLines,
+        h = config.thicknessOfLines
+    },
+    {
+        x = x / 2 - config.thicknessOfLines / 2,
+        y = y / 2 - config.gapInMiddle / 2 - config.outlineThickness - config.lengthOfLines,
+        w = config.thicknessOfLines,
+        h = config.lengthOfLines
+    },
+    {
+        x = x / 2 - config.thicknessOfLines / 2,
+        y = y / 2 + config.gapInMiddle / 2 + config.outlineThickness,
+        w = config.thicknessOfLines,
+        h = config.lengthOfLines
+    }
+}
+
+
+local isLookOnEntity = false
+
+hook.add("tick", "CheckIsOwnerLookOnEntity", function()
+    targetEntity = owner():getEyeTrace().Entity
+    isLookOnEntity = isValid(targetEntity) and (targetEntity:isPlayer() or targetEntity:isNPC())
+end)
+
+hook.add("postdrawhud", "Draw", function()
+    render.setColor(config.outlineColor)
+    if config.outlineThickness > 0 then
+        for index = 1, 4 do
+            render.drawRect(outlinePoses[index].x, outlinePoses[index].y, outlinePoses[index].w, outlinePoses[index].h)
+        end
+    end
+    
+    if isLookOnEntity then
+        render.setColor(config.onTargetColor)
+    else
+        render.setColor(config.normalColor)
+    end
+    
+    for index = 1, 4 do
+        render.drawRect(linePoses[index].x, linePoses[index].y, linePoses[index].w, linePoses[index].h)
+    end
+end)

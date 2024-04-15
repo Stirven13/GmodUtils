@@ -1,0 +1,42 @@
+--@name PlayerByNick
+--@author NepNep | discord: stirven
+--@server
+
+//if player() ~= owner() then return end
+
+
+local PLAYER_DATA = "StEAM_0:0:529301290"
+
+local function getPlayerByData(data)    
+    local players = find.allPlayers()
+    
+    for _, player in ipairs(players) do
+        if player:getSteamID() == string.upper(data) then
+            return player
+        elseif player:getSteamID64() == string.upper(data) then
+            return player
+        end
+        
+        local nickWithoutTag, _ = string.gsub(player:getName(), "<[^>]*>", "")
+        nickWithoutTag = string.lower(nickWithoutTag)
+        if nickWithoutTag == string.lower(data) then
+            return player
+        end
+    end
+    
+    for _, player in ipairs(players) do
+        local nickWithoutTag, _ = string.gsub(player:getName(), "<[^>]*>", "")
+        nickWithoutTag = string.lower(nickWithoutTag)
+        if not string.find(nickWithoutTag, string.lower(data)) then continue end
+        return player
+    end
+end
+
+local targetPlayer = getPlayerByData(PLAYER_DATA)
+print(targetPlayer)
+
+hook.add("PlayerSay", "CheckNick", function(ply, text, teamChat)
+    if ply ~= owner() then return end
+    targetPlayer = getPlayerByData(text)
+    print(targetPlayer)
+end)

@@ -1,0 +1,31 @@
+--@name GetForwardExample
+--@author NepNep | discord: stirven
+--@shared
+
+if player() != owner() then return end
+
+if CLIENT then
+    enableHud(owner(), true)
+    
+    hook.add("postdrawopaquerenderables", "DrawTriggers", function(depth, skybox)
+        render.setColor(Color(255, 0, 0))
+        
+        local newPos = chip():getPos() + chip():getForward() * 20
+        render.draw3DWireframeBox(newPos, chip():getAngles(), Vector(-5,-5,-5), Vector(5,5,5))
+        
+        render.setColor(Color(0, 255, 0))
+        newPos = chip():getPos() + chip():getForward():getRotated(Angle(0, 90, 0)) * 20
+        render.draw3DWireframeBox(newPos, chip():getAngles(), Vector(-5,-5,-5), Vector(5,5,5))
+        
+        render.setColor(Color(0, 0, 255))
+        newPos = chip():getPos() + chip():getForward():getRotated(Angle(-90, 0, 0)) * 20
+        render.draw3DWireframeBox(newPos, chip():getAngles(), Vector(-5,-5,-5), Vector(5,5,5))
+    end)
+elseif SERVER then
+    chip():setFrozen(true)
+    
+    hook.add("tick", "changeAngles", function()
+        local newAngles = chip():getAngles() + Angle(0, 0, 0)
+        chip():setAngles(newAngles)
+    end)
+end

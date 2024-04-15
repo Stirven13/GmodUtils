@@ -1,0 +1,36 @@
+--@name Check Collision Group
+--@author NepNep | discord: stirven
+--@server
+--@model models/hunter/blocks/cube1x1x1.mdl
+
+chip():setCollisionGroup(COLLISION_GROUP.WORLD)
+
+
+/*
+P - player
+W - world
+PO - prop object
+
+
+NONE    - P W PO
+DEBRIS    - W PO
+DEBRIS_TRIGGER    - W PO
+INTERACTIVE_DEBRIS    - P W PO
+INTERACTIVE    - P W PO
+PLAYER    - P W PO
+BREAKABLE_GLASS    - P W PO 
+VEHICLE    - P W PO
+PLAYER_MOVEMENT    - P W PO 
+NPC    - P W PO
+IN_VEHICLE    - 
+WEAPON    - W PO
+VEHICLE_CLIP    - 
+PROJECTILE    - P W PO
+DOOR_BLOCKER    - 
+PASSABLE_DOOR - W PO
+DISSOLVING    - W PO
+PUSHAWAY    - P W PO
+NPC_ACTOR    - W PO
+NPC_SCRIPTED    - P W PO
+WORLD - W
+*/

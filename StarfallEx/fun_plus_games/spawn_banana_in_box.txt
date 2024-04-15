@@ -1,0 +1,92 @@
+--@name SpawnBananaInBox
+--@author NepNep | discord: stirven
+--@server
+
+local neededEntityClass = "sent_banana_peel"
+
+local point1, point2 = nil, nil
+
+local function filterMyEntity(ent)
+    if ent:getOwner() ~= owner() then return false end
+    if ent:getClass() ~= neededEntityClass then return false end
+    
+    return true
+end
+
+local function randomPointInBox(point1, point2)
+    local minX = math.min(point1.x, point2.x)
+    local minY = math.min(point1.y, point2.y)
+    local minZ = math.min(point1.z, point2.z)
+
+    local maxX = math.max(point1.x, point2.x)
+    local maxY = math.max(point1.y, point2.y)
+    local maxZ = math.max(point1.z, point2.z)
+
+    local randomPoint = Vector(math.random(minX, maxX), math.random(minY, maxY), math.random(minZ, maxZ))
+
+    return randomPoint
+end
+
+
+hook.add("OnEntityCreated", "SetPosForEntity", function(ent)
+    if not isValid(ent) then return end
+    if ent:getOwner() ~= owner() then return end
+    if ent:getClass() ~= neededEntityClass then return end
+    
+    local newPos = randomPointInBox(point1, point2)
+    
+    ent:setPos(newPos)
+end)
+
+local function setBananasInBox()
+    local bananas = find.all(filterMyEntity)
+    
+    for i, banana in ipairs(bananas) do
+        local randomPoint = randomPointInBox(point1, point2)
+        banana:setPos(randomPoint)
+    end
+end
+
+local function freezeBananas()
+    local bananas = find.all(filterMyEntity)
+    
+    for i, banana in ipairs(bananas) do
+        if not banana:isFrozen() then continue end
+        banana:setFrozen(true)
+    end
+end
+
+local function unfreezeBananas()
+    local bananas = find.all(filterMyEntity)
+    
+    for i, banana in ipairs(bananas) do
+        if banana:isFrozen() then continue end
+        banana:setFrozen(false)
+    end
+end
+
+local function removeBanana()
+    local bananas = find.all(filterMyEntity)
+    
+    for i, banana in ipairs(bananas) do
+        banana:remove()
+    end
+end
+
+hook.add("PlayerSay", "CheckCommand", function(ply, text, teamChat)
+    if ply ~= owner() then return end
+    
+    if text == "!setpos1" then
+        point1 = ply:getEyeTrace().HitPos
+    elseif text == "!setpos2" then
+        point2 = ply:getEyeTrace().HitPos
+    elseif text == "!box" then
+        setBananasInBox()
+    elseif text == "!bf" then
+        freezeBananas()
+    elseif text == "!buf" then
+        unfreezeBananas()
+    elseif text == "!bremove" then
+        removeBanana()
+    end
+end)
